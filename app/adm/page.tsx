@@ -1,0 +1,185 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import { obterChamadosAbertos, assumirChamado, finalizarChamado } from '../actions/chamados';
+import { Chamado } from '@/types/database';
+import { ChamadoCard } from '@/components/ChamadoCard';
+import { ChamadoModal } from '@/components/ChamadoModal';
+
+export default function Dashboard() {
+  const router = useRouter();
+  const [chamados, setChamados] = useState<Chamado[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [chamadoSelecionado, setChamadoSelecionado] = useState<Chamado | null>(null);
+  const [adminName, setAdminName] = useState<string>('TI');
+
+  const fetchChamados = async () => {
+    try {
+      const data = await obterChamadosAbertos();
+      setChamados(data);
+    } catch (error) {
+      console.error('Erro ao buscar chamados:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Buscar usuário logado
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        const email = session.user.email;
+        // Pega a parte antes do @
+        const beforeAt = email.split('@')[0];
+        // Pega a parte antes do primeiro ponto e capitaliza
+        const firstName = beforeAt.split('.')[0];
+        const formattedName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+        setAdminName(formattedName);
+      }
+    };
+    getSession();
+
+    fetchChamados();
+
+    const channel = supabase
+      .channel('custom-all-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'chamados' },
+        () => {
+          fetchChamados();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const handleAssumir = async (id: string) => {
+    try {
+      await assumirChamado(id, adminName);
+      await fetchChamados();
+      
+      // Atualiza o modal aberto se necessário
+      setChamadoSelecionado(prev => prev ? { ...prev, status: 'Em Andamento', responsavel: adminName } : null);
+    } catch (error: any) {
+      alert(error.message);
+    }
+  };
+
+  const handleConcluir = async (id: string, resolucao: string) => {
+    try {
+      await finalizarChamado(id, resolucao);
+      await fetchChamados();
+      setChamadoSelecionado(null); // Fecha o modal após concluir
+    } catch (error: any) {
+      alert(error.message);
+    }
+  };
+
+  // Separação dos chamados nas colunas do Kanban
+  const pendentes = chamados.filter(c => c.status === 'Pendente');
+  const emAndamento = chamados.filter(c => c.status === 'Em Andamento');
+  // Nota: A função obterChamadosAbertos já filtra os concluídos, mas se viermos a buscar todos no futuro, mantemos a coluna pronta.
+  const concluidos = chamados.filter(c => c.status === 'Concluído');
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-zinc-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#E31837]"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-zinc-50 p-8">
+      <button 
+        onClick={() => router.push('/menu')}
+        className="mb-6 flex items-center text-zinc-500 hover:text-zinc-900 transition-colors font-medium text-sm gap-2"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+        </svg>
+        Voltar para o Menu
+      </button>
+
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Painel de Administração</h1>
+          <p className="text-zinc-500 mt-1">Gestão de chamados de TI e Manutenção em tempo real.</p>
+        </div>
+      </div>
+      
+      {/* Kanban Board */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* Coluna Pendentes */}
+        <div className="flex flex-col bg-zinc-100/50 rounded-2xl p-4 border border-zinc-200 shadow-inner">
+          <div className="flex items-center gap-2 mb-4 px-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#E31837]" />
+            <h2 className="font-bold text-zinc-800">Pendentes ({pendentes.length})</h2>
+          </div>
+          <div className="flex flex-col gap-3 overflow-y-auto max-h-[70vh] pb-4">
+            {pendentes.length === 0 ? (
+              <p className="text-zinc-400 text-sm italic p-4 text-center">Nenhum chamado pendente.</p>
+            ) : (
+              pendentes.map(chamado => (
+                <ChamadoCard key={chamado.id} chamado={chamado} onClick={() => setChamadoSelecionado(chamado)} />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Coluna Em Andamento */}
+        <div className="flex flex-col bg-zinc-100/50 rounded-2xl p-4 border border-zinc-200 shadow-inner">
+          <div className="flex items-center gap-2 mb-4 px-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+            <h2 className="font-bold text-zinc-800">Em Andamento ({emAndamento.length})</h2>
+          </div>
+          <div className="flex flex-col gap-3 overflow-y-auto max-h-[70vh] pb-4">
+            {emAndamento.length === 0 ? (
+              <p className="text-zinc-400 text-sm italic p-4 text-center">Nenhum chamado em andamento.</p>
+            ) : (
+              emAndamento.map(chamado => (
+                <ChamadoCard key={chamado.id} chamado={chamado} onClick={() => setChamadoSelecionado(chamado)} />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Coluna Concluídos (Recentemente) */}
+        <div className="flex flex-col bg-zinc-100/50 rounded-2xl p-4 border border-zinc-200 shadow-inner">
+          <div className="flex items-center gap-2 mb-4 px-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+            <h2 className="font-bold text-zinc-800">Recentes (Hoje)</h2>
+          </div>
+          <div className="flex flex-col gap-3 overflow-y-auto max-h-[70vh] pb-4">
+            {concluidos.length === 0 ? (
+              <p className="text-zinc-400 text-sm italic p-4 text-center">Os chamados concluídos somem da fila principal e vão para os relatórios.</p>
+            ) : (
+              concluidos.map(chamado => (
+                <ChamadoCard key={chamado.id} chamado={chamado} onClick={() => setChamadoSelecionado(chamado)} />
+              ))
+            )}
+          </div>
+        </div>
+
+      </div>
+
+      {/* Modal de Detalhes */}
+      {chamadoSelecionado && (
+        <ChamadoModal 
+          chamado={chamadoSelecionado}
+          onClose={() => setChamadoSelecionado(null)}
+          onAssumir={handleAssumir}
+          onConcluir={handleConcluir}
+        />
+      )}
+    </div>
+  );
+}

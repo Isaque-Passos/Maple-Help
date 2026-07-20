@@ -1,0 +1,123 @@
+'use client';
+
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+
+// E-mails autorizados para acessar o painel de ADM
+const ADMIN_EMAILS = [
+  'isaque@maple.local',
+  'isaque@maplebear.com',
+  'admin@maplebear.com',
+  'isaquepassos2007@gmail.com'
+];
+
+export default function HubMenu() {
+  const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        router.push('/');
+        return;
+      }
+
+      const email = session.user.email || '';
+      setUserName(email.split('@')[0]);
+      
+      if (ADMIN_EMAILS.includes(email)) {
+        setIsAdmin(true);
+      }
+      setLoading(false);
+    };
+
+    checkAuth();
+  }, [router]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
+  };
+
+  if (loading) {
+    return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-medium text-gray-600">Carregando Maple Help...</div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-6 md:p-12">
+      <header className="bg-white shadow-xl shadow-gray-200/50 border border-gray-100 rounded-3xl flex flex-col md:flex-row justify-between items-center px-8 py-6 mb-12 max-w-5xl mx-auto gap-4">
+        <h1 className="text-4xl font-extrabold text-[#E31837] tracking-tight drop-shadow-sm">Maple Help</h1>
+        <div className="flex items-center justify-end w-full md:w-auto gap-3 ml-auto">
+          <span className="text-gray-500 font-medium text-xs">Olá, {userName}</span>
+          <button 
+            onClick={handleLogout}
+            className="text-xs px-3 py-1.5 bg-white border border-gray-200 shadow-sm rounded-lg text-gray-600 hover:bg-gray-50 font-bold transition-all hover:shadow"
+          >
+            Sair
+          </button>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        {/* Card de Chamado TI */}
+        <Link href="/chamado" className="group bg-white rounded-3xl shadow-sm border border-gray-200 p-10 hover:shadow-xl transition-all hover:-translate-y-2 cursor-pointer">
+          <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-8 text-[#E31837] group-hover:bg-[#E31837] group-hover:text-white transition-colors duration-300">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-9 h-9">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">TI & Computadores</h2>
+          <p className="text-gray-500 font-medium leading-relaxed">Abrir chamados referentes a problemas na lousa digital, internet, computadores, e-mail e sistemas da escola.</p>
+        </Link>
+
+        {/* Card Estrutural (Futuro) */}
+        <div className="bg-white/40 rounded-3xl border-2 border-gray-200 border-dashed p-10 relative overflow-hidden">
+          <div className="absolute inset-0 bg-slate-50/60 flex items-center justify-center backdrop-blur-[2px] z-10">
+            <span className="bg-white px-5 py-2.5 rounded-full shadow-md text-sm font-extrabold text-gray-700 tracking-wide">EM BREVE</span>
+          </div>
+          <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-8 text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-9 h-9">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-400 mb-3">Manutenção Estrutural</h2>
+          <p className="text-gray-400 font-medium leading-relaxed">Lâmpadas, encanamento, ar-condicionado e problemas na infraestrutura física.</p>
+        </div>
+
+        {/* Card Admin (Visível apenas para admins) */}
+        {isAdmin && (
+          <Link href="/adm" className="md:col-span-2 bg-gradient-to-br from-gray-900 to-[#1F2937] rounded-3xl shadow-xl border border-gray-800 p-10 hover:shadow-2xl transition-all hover:-translate-y-1 flex items-center justify-between group overflow-hidden relative">
+            
+            {/* Efeito de brilho no fundo */}
+            <div className="absolute -right-20 -top-20 w-64 h-64 bg-[#E31837] rounded-full blur-[80px] opacity-20 group-hover:opacity-40 transition-opacity"></div>
+            
+            <div className="relative z-10">
+              <div className="flex items-center gap-6 mb-4">
+                <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center text-[#E31837] shadow-inner border border-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-9 h-9">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46" />
+                  </svg>
+                </div>
+                <h2 className="text-3xl font-extrabold text-white">Painel da Administração</h2>
+              </div>
+              <p className="text-gray-400 font-medium text-lg">Acesso exclusivo da equipe para gestão de chamados abertos e relatórios.</p>
+            </div>
+            
+            <div className="relative z-10 bg-[#E31837] text-white p-4 rounded-full opacity-0 group-hover:opacity-100 transition-all transform translate-x-8 group-hover:translate-x-0 shadow-lg shadow-red-500/50">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </div>
+          </Link>
+        )}
+      </main>
+    </div>
+  );
+}
