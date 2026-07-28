@@ -8,7 +8,7 @@ import { Chamado } from '@/types/database';
  * @param dados Dados do chamado (solicitante, local, categoria, descricao).
  * @returns O chamado recém-criado.
  */
-export async function abrirChamado(dados: Omit<Chamado, 'id' | 'status' | 'resolucao' | 'data_criacao' | 'data_resolucao'>) {
+export async function abrirChamado(dados: Omit<Chamado, 'id' | 'status' | 'resolucao' | 'data_criacao' | 'data_resolucao' | 'responsavel'>) {
   try {
     const { solicitante, local, categoria, descricao } = dados;
     
