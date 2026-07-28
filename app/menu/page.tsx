@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import Header from '@/components/Header';
 
 // E-mails autorizados para acessar o painel de ADM
 const ADMIN_EMAILS = [
@@ -18,6 +19,22 @@ export default function HubMenu() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
+  
+  const [showTooltip, setShowTooltip] = useState(false);
+  const tooltipTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnterTI = () => {
+    tooltipTimer.current = setTimeout(() => {
+      setShowTooltip(true);
+    }, 500); // Exibir após meio segundo de hover
+  };
+
+  const handleMouseLeaveTI = () => {
+    if (tooltipTimer.current) {
+      clearTimeout(tooltipTimer.current);
+    }
+    setShowTooltip(false);
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -29,7 +46,10 @@ export default function HubMenu() {
       }
 
       const email = session.user.email || '';
-      setUserName(email.split('@')[0]);
+      const beforeAt = email.split('@')[0];
+      const firstName = beforeAt.split('.')[0];
+      const formattedName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+      setUserName(formattedName);
       
       if (ADMIN_EMAILS.includes(email)) {
         setIsAdmin(true);
@@ -40,10 +60,7 @@ export default function HubMenu() {
     checkAuth();
   }, [router]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
-  };
+  // handleLogout removido, agora está no componente Header
 
   if (loading) {
     return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-medium text-gray-600">Carregando Maple Help...</div>;
@@ -51,31 +68,35 @@ export default function HubMenu() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-12">
-      <header className="bg-white shadow-xl shadow-gray-200/50 border border-gray-100 rounded-3xl flex flex-col md:flex-row justify-between items-center px-8 py-6 mb-12 max-w-5xl mx-auto gap-4">
-        <h1 className="text-4xl font-extrabold text-[#E31837] tracking-tight drop-shadow-sm">Maple Help</h1>
-        <div className="flex items-center justify-end w-full md:w-auto gap-3 ml-auto">
-          <span className="text-gray-500 font-medium text-xs">Olá, {userName}</span>
-          <button 
-            onClick={handleLogout}
-            className="text-xs px-3 py-1.5 bg-white border border-gray-200 shadow-sm rounded-lg text-gray-600 hover:bg-gray-50 font-bold transition-all hover:shadow"
-          >
-            Sair
-          </button>
-        </div>
-      </header>
+      <Header userName={userName} />
 
       <main className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
         
         {/* Card de Chamado TI */}
-        <Link href="/chamado" className="group bg-white rounded-3xl shadow-sm border border-gray-200 p-10 hover:shadow-xl transition-all hover:-translate-y-2 cursor-pointer">
-          <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-8 text-[#E31837] group-hover:bg-[#E31837] group-hover:text-white transition-colors duration-300">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-9 h-9">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">TI & Computadores</h2>
-          <p className="text-gray-500 font-medium leading-relaxed">Abrir chamados referentes a problemas na lousa digital, internet, computadores, e-mail e sistemas da escola.</p>
-        </Link>
+        <div 
+          className="relative group"
+          onMouseEnter={handleMouseEnterTI}
+          onMouseLeave={handleMouseLeaveTI}
+        >
+          <Link href="/chamado" className="flex flex-col items-center justify-center text-center bg-white rounded-3xl shadow-sm border border-gray-200 p-10 hover:shadow-xl transition-all hover:-translate-y-2 cursor-pointer h-full">
+            <div className="w-24 h-24 bg-red-50 rounded-3xl flex items-center justify-center mb-6 text-[#E31837] group-hover:bg-[#E31837] group-hover:text-white transition-colors duration-300 shadow-sm group-hover:shadow-md">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
+              </svg>
+            </div>
+            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">TI</h2>
+          </Link>
+          
+          {/* Tooltip Popup */}
+          {showTooltip && (
+            <div className="absolute top-[105%] left-1/2 -translate-x-1/2 mt-4 w-72 bg-white text-gray-600 font-medium text-sm p-4 rounded-xl shadow-lg border border-gray-100 z-50 animate-in fade-in zoom-in duration-200">
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-t border-l border-gray-100 rotate-45"></div>
+              <div className="relative z-10 text-center leading-relaxed">
+                Abrir chamados referentes a problemas na lousa digital, internet, computadores, e-mail e sistemas da escola.
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Card Estrutural (Futuro) */}
         <div className="bg-white/40 rounded-3xl border-2 border-gray-200 border-dashed p-10 relative overflow-hidden">

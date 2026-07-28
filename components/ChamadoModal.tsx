@@ -6,9 +6,10 @@ interface ChamadoModalProps {
   onClose: () => void;
   onAssumir: (id: string) => Promise<void>;
   onConcluir: (id: string, resolucao: string) => Promise<void>;
+  onDelete?: (id: string) => void;
 }
 
-export function ChamadoModal({ chamado, onClose, onAssumir, onConcluir }: ChamadoModalProps) {
+export function ChamadoModal({ chamado, onClose, onAssumir, onConcluir, onDelete }: ChamadoModalProps) {
   const [resolucao, setResolucao] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -52,12 +53,33 @@ export function ChamadoModal({ chamado, onClose, onAssumir, onConcluir }: Chamad
               </span>
             )}
           </div>
-          <button 
-            onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-full transition-colors"
-          >
-            ✕
-          </button>
+          
+          <div className="flex items-center gap-2">
+            {onDelete && (
+              <button 
+                onClick={() => {
+                  if (confirm('Tem certeza que deseja apagar este chamado? (Apenas para testes)')) {
+                    onDelete(chamado.id);
+                  }
+                }}
+                className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors flex-shrink-0"
+                title="Apagar Chamado de Teste"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.158 0c-.36-.05-.72-.109-1.08-.166m-1.08-.166V4.41a2.25 2.25 0 00-2.25-2.25h-5.62a2.25 2.25 0 00-2.25 2.25v.38m10.8 0c-.36-.05-.72-.109-1.08-.166M7.5 5.79c.36-.05.72-.109 1.08-.166M7.5 5.79c-.36.05-.72.109-1.08.166M4.772 5.79c-.342.052-.682.107-1.022.166" />
+                </svg>
+              </button>
+            )}
+            
+            <button 
+              onClick={onClose}
+              className="p-2 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-full transition-colors flex-shrink-0"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Corpo do Modal (Scrollable) */}

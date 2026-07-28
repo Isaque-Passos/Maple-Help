@@ -48,7 +48,6 @@ export async function obterChamadosAbertos() {
     const { data, error } = await supabase
       .from('chamados')
       .select('*')
-      .neq('status', 'Concluído')
       .order('data_criacao', { ascending: false });
 
     if (error) {
@@ -149,5 +148,27 @@ export async function assumirChamado(id: string, responsavel: string) {
   } catch (error: any) {
     console.error('Erro em assumirChamado:', error);
     throw new Error(`Não foi possível assumir o chamado: ${error.message}`);
+  }
+}
+
+/**
+ * Exclui um chamado do banco de dados (Útil para testes).
+ * @param id ID (uuid) do chamado.
+ */
+export async function deletarChamado(id: string) {
+  try {
+    const { error } = await supabase
+      .from('chamados')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      throw error;
+    }
+    
+    return true;
+  } catch (error: any) {
+    console.error('Erro em deletarChamado:', error);
+    throw new Error(`Não foi possível deletar o chamado: ${error.message}`);
   }
 }

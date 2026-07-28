@@ -14,6 +14,12 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!email.toLowerCase().endsWith('@maplebeararaxa.com.br')) {
+      alert('Acesso negado: Utilize seu e-mail institucional (@maplebeararaxa.com.br)');
+      return;
+    }
+
     setLoading(true);
 
     if (isSignUp) {

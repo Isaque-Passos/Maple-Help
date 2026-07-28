@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { abrirChamado } from '../actions/chamados';
+import { supabase } from '@/lib/supabase';
 
 
 export default function Home() {
@@ -14,6 +15,23 @@ export default function Home() {
   const [descricao, setDescricao] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [primeiroNome, setPrimeiroNome] = useState('');
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        const email = session.user.email;
+        // Padrão da escola: nome.sobrenome@maplebeararaxa.com.br
+        if (email.includes('.') && email.indexOf('.') < email.indexOf('@')) {
+          const part = email.split('.')[0];
+          const name = part.charAt(0).toUpperCase() + part.slice(1);
+          setPrimeiroNome(name);
+        }
+      }
+    };
+    fetchUser();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,17 +69,37 @@ export default function Home() {
         </button>
 
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 p-8">
-          <div className="flex flex-col items-center justify-center mb-8">
-            <Image 
-              src="/maple_bear_chamado_02.png" 
-              alt="Mascote Maple Bear" 
-              width={120} 
-              height={120} 
-              className="object-contain mb-4 drop-shadow-md"
-            />
-            <h1 className="text-3xl font-extrabold text-[#E31837]">
-              Maple Help
-            </h1>
+          <div className="flex items-center justify-between relative mb-10 mt-2">
+            {/* Esquerda: Título */}
+            <div className="flex flex-col z-10">
+              <h1 className="text-4xl font-extrabold text-[#E31837] tracking-tight">
+                Maple Help
+              </h1>
+              <p className="text-gray-500 font-medium mt-1">Central de Suporte TI</p>
+            </div>
+
+            {/* Direita: Mascote e Balão */}
+            <div className="relative flex items-center">
+              {/* Balão de Fala */}
+              <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-red-50 border border-red-100 rounded-2xl rounded-tr-none shadow-sm px-4 py-3 min-w-[200px]">
+                <p className="text-slate-800 font-medium text-sm leading-relaxed">
+                  {primeiroNome ? `Olá, ${primeiroNome}! Qual o problema de hoje?` : 'Olá! Qual o problema de hoje?'}
+                </p>
+                {/* Seta do balão (Triângulo) */}
+                <div className="absolute top-0 -right-2 w-0 h-0 border-t-[10px] border-t-red-50 border-r-[10px] border-r-transparent"></div>
+              </div>
+
+              {/* Imagem do Mascote */}
+              <div className="relative z-10 translate-x-4">
+                <Image 
+                  src="/maple_bear_chamado_02.png" 
+                  alt="Mascote Maple Bear" 
+                  width={140} 
+                  height={140} 
+                  className="object-contain drop-shadow-lg transform hover:scale-105 transition-transform duration-300"
+                />
+              </div>
+            </div>
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -145,10 +183,14 @@ export default function Home() {
       {showSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-all">
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl animate-in fade-in zoom-in duration-300">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-10 h-10">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-              </svg>
+            <div className="flex items-center justify-center mx-auto mb-6">
+              <Image 
+                src="/maple_bear_concluido.png" 
+                alt="Chamado Concluído" 
+                width={180} 
+                height={180} 
+                className="object-contain drop-shadow-sm"
+              />
             </div>
             <h2 className="text-2xl font-extrabold text-gray-900 mb-3">Tudo Certo!</h2>
             <p className="text-gray-500 mb-8 font-medium leading-relaxed">
