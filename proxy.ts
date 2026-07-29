@@ -24,30 +24,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // Extrair o token de autenticação dos cookies do Supabase
-  // O Supabase armazena o token em cookies com padrão sb-<project-ref>-auth-token
-  const cookies = request.cookies;
-  let accessToken: string | null = null;
-
-  // Procurar pelo cookie de auth do Supabase
-  for (const [name, cookie] of cookies) {
-    if (name.includes('auth-token')) {
-      try {
-        // O cookie pode ser um JSON com access_token ou o token direto
-        const parsed = JSON.parse(cookie.value);
-        if (parsed.access_token) {
-          accessToken = parsed.access_token;
-        } else if (Array.isArray(parsed) && parsed[0]) {
-          // Formato chunked: pode ser base64 encoded
-          accessToken = parsed[0];
-        }
-      } catch {
-        // Se não for JSON, pode ser o token direto
-        accessToken = cookie.value;
-      }
-      break;
-    }
-  }
+  // O token agora é injetado pelo componente <SessionSync /> (salvo em sb-auth-token)
+  const accessToken = request.cookies.get('sb-auth-token')?.value;
 
   if (!accessToken) {
     // Sem token → redirecionar para login
