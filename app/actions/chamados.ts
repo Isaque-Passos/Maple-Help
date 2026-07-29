@@ -1,8 +1,31 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use server';
 
-import { supabase } from '@/lib/supabase';
+import { supabase as supabaseStatic } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 import { Chamado } from '@/types/database';
+
+async function getSupabase() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('sb-auth-token')?.value;
+
+  if (token) {
+    return createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      }
+    );
+  }
+
+  return supabaseStatic;
+}
 
 /**
  * Cria um novo chamado no sistema.
@@ -11,6 +34,7 @@ import { Chamado } from '@/types/database';
  */
 export async function abrirChamado(dados: Omit<Chamado, 'id' | 'status' | 'resolucao' | 'data_criacao' | 'data_resolucao' | 'responsavel'>) {
   try {
+    const supabase = await getSupabase();
     const { solicitante, local, categoria, descricao } = dados;
     
     // Status será salvo como 'Pendente' para alinhar com a estrutura do BD.
@@ -46,6 +70,7 @@ export async function abrirChamado(dados: Omit<Chamado, 'id' | 'status' | 'resol
  */
 export async function obterChamadosAbertos() {
   try {
+    const supabase = await getSupabase();
     const { data, error } = await supabase
       .from('chamados')
       .select('*')
@@ -71,6 +96,7 @@ export async function obterChamadosAbertos() {
  */
 export async function obterChamadosConcluidos(mes: number, ano: number) {
   try {
+    const supabase = await getSupabase();
     // Definimos o início e fim do mês para criar o range de datas
     const dataInicio = new Date(ano, mes - 1, 1).toISOString();
     const dataFim = new Date(ano, mes, 1).toISOString();
@@ -102,6 +128,7 @@ export async function obterChamadosConcluidos(mes: number, ano: number) {
  */
 export async function finalizarChamado(id: string, resolucao: string) {
   try {
+    const supabase = await getSupabase();
     const { data, error } = await supabase
       .from('chamados')
       .update({ 
@@ -131,6 +158,7 @@ export async function finalizarChamado(id: string, resolucao: string) {
  */
 export async function assumirChamado(id: string, responsavel: string) {
   try {
+    const supabase = await getSupabase();
     const { data, error } = await supabase
       .from('chamados')
       .update({ 
@@ -158,6 +186,7 @@ export async function assumirChamado(id: string, responsavel: string) {
  */
 export async function deletarChamado(id: string) {
   try {
+    const supabase = await getSupabase();
     const { error } = await supabase
       .from('chamados')
       .delete()
