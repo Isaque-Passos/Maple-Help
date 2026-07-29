@@ -6,12 +6,13 @@ interface ChamadoModalProps {
   chamado: Chamado;
   onClose: () => void;
   onAssumir: (id: string) => Promise<void>;
-  onConcluir: (id: string, resolucao: string) => Promise<void>;
+  onConcluir: (id: string, resolucao: string, tempo_gasto: string) => Promise<void>;
   onDelete?: (id: string) => void;
 }
 
 export function ChamadoModal({ chamado, onClose, onAssumir, onConcluir, onDelete }: ChamadoModalProps) {
   const [resolucao, setResolucao] = useState('');
+  const [tempoGasto, setTempoGasto] = useState('');
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -46,16 +47,26 @@ export function ChamadoModal({ chamado, onClose, onAssumir, onConcluir, onDelete
   };
 
   const handleConcluir = async () => {
+    let hasError = false;
+
+    if (!tempoGasto.trim()) {
+      const input = document.getElementById('tempo-input');
+      input?.classList.add('ring-2', 'ring-red-400');
+      setTimeout(() => input?.classList.remove('ring-2', 'ring-red-400'), 2000);
+      hasError = true;
+    }
+
     if (!resolucao.trim()) {
-      // Highlight do campo vazio em vez de alert()
       const textarea = document.getElementById('resolucao-textarea');
-      textarea?.focus();
       textarea?.classList.add('ring-2', 'ring-red-400');
       setTimeout(() => textarea?.classList.remove('ring-2', 'ring-red-400'), 2000);
-      return;
+      hasError = true;
     }
+
+    if (hasError) return;
+
     setLoading(true);
-    await onConcluir(chamado.id, resolucao);
+    await onConcluir(chamado.id, resolucao, tempoGasto);
     setLoading(false);
   };
 
@@ -155,17 +166,32 @@ export function ChamadoModal({ chamado, onClose, onAssumir, onConcluir, onDelete
 
             {/* Área de Resolução para Chamados em Andamento */}
             {chamado.status === 'Em Andamento' && (
-              <div className="mt-6 animate-in fade-in slide-in-from-bottom-2">
-                <label htmlFor="resolucao-textarea" className="block text-xs text-zinc-500 font-semibold uppercase tracking-wider mb-2">
-                  Notas de Resolução <span className="text-[#E31837]">*</span>
-                </label>
-                <textarea
-                  id="resolucao-textarea"
-                  value={resolucao}
-                  onChange={(e) => setResolucao(e.target.value)}
-                  placeholder="Descreva o que foi feito para resolver o problema..."
-                  className="w-full p-4 bg-white text-zinc-900 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-[#E31837] focus:border-[#E31837] outline-none transition-all resize-none min-h-[120px]"
-                />
+              <div className="mt-6 animate-in fade-in slide-in-from-bottom-2 space-y-4">
+                <div>
+                  <label htmlFor="tempo-input" className="block text-xs text-zinc-500 font-semibold uppercase tracking-wider mb-2">
+                    Tempo Gasto <span className="text-[#E31837]">*</span>
+                  </label>
+                  <input
+                    id="tempo-input"
+                    type="text"
+                    value={tempoGasto}
+                    onChange={(e) => setTempoGasto(e.target.value)}
+                    placeholder="Ex: 30m, 1h 20m..."
+                    className="w-full p-3 bg-white text-zinc-900 border border-zinc-200 rounded-xl focus:ring-2 focus:ring-[#E31837] focus:border-[#E31837] outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="resolucao-textarea" className="block text-xs text-zinc-500 font-semibold uppercase tracking-wider mb-2">
+                    Notas de Resolução <span className="text-[#E31837]">*</span>
+                  </label>
+                  <textarea
+                    id="resolucao-textarea"
+                    value={resolucao}
+                    onChange={(e) => setResolucao(e.target.value)}
+                    placeholder="Descreva o que foi feito para resolver o problema..."
+                    className="w-full p-4 bg-white text-zinc-900 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-[#E31837] focus:border-[#E31837] outline-none transition-all resize-none min-h-[120px]"
+                  />
+                </div>
               </div>
             )}
 
@@ -174,14 +200,21 @@ export function ChamadoModal({ chamado, onClose, onAssumir, onConcluir, onDelete
               <div className="mt-6 bg-green-50 p-4 rounded-2xl border border-green-100">
                 <p className="text-xs text-green-700 font-semibold uppercase tracking-wider mb-2">Solução Aplicada</p>
                 <p className="text-green-900 whitespace-pre-wrap">{chamado.resolucao}</p>
-                {chamado.data_resolucao && (
-                  <p className="text-xs text-green-700 mt-3 border-t border-green-200/50 pt-2 font-medium">
-                    Resolvido em: {new Date(chamado.data_resolucao).toLocaleString('pt-BR', {
-                      day: '2-digit', month: '2-digit', year: 'numeric',
-                      hour: '2-digit', minute: '2-digit'
-                    })}
-                  </p>
-                )}
+                <div className="flex items-center gap-4 mt-3 border-t border-green-200/50 pt-2 text-xs text-green-700 font-medium">
+                  {chamado.data_resolucao && (
+                    <p>
+                      Resolvido em: {new Date(chamado.data_resolucao).toLocaleString('pt-BR', {
+                        day: '2-digit', month: '2-digit', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                      })}
+                    </p>
+                  )}
+                  {chamado.tempo_gasto && (
+                    <p>
+                      • Tempo gasto: {chamado.tempo_gasto}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </div>

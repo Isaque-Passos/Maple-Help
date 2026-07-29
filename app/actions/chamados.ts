@@ -1,30 +1,33 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use server';
 
-import { supabase as supabaseStatic } from '@/lib/supabase';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { Chamado } from '@/types/database';
 
 async function getSupabase() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('sb-auth-token')?.value;
 
-  if (token) {
-    return createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
         },
-      }
-    );
-  }
-
-  return supabaseStatic;
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch (error) {
+            // Ignorar erro se for chamado de um Server Component
+          }
+        },
+      },
+    }
+  );
 }
 
 /**
@@ -32,7 +35,7 @@ async function getSupabase() {
  * @param dados Dados do chamado (solicitante, local, categoria, descricao).
  * @returns O chamado recém-criado.
  */
-export async function abrirChamado(dados: Omit<Chamado, 'id' | 'status' | 'resolucao' | 'data_criacao' | 'data_resolucao' | 'responsavel'>) {
+export async function abrirChamado(dados: Omit<Chamado, 'id' | 'status' | 'resolucao' | 'data_criacao' | 'data_resolucao' | 'responsavel' | 'tempo_gasto'>) {
   try {
     const supabase = await getSupabase();
     const { solicitante, local, categoria, descricao } = dados;
@@ -126,7 +129,7 @@ export async function obterChamadosConcluidos(mes: number, ano: number) {
  * @param resolucao Texto informando como o chamado foi concluído.
  * @returns O chamado atualizado.
  */
-export async function finalizarChamado(id: string, resolucao: string) {
+export async function finalizarChamado(id: string, resolucao: string, tempo_gasto: string) {
   try {
     const supabase = await getSupabase();
     const { data, error } = await supabase
@@ -134,6 +137,7 @@ export async function finalizarChamado(id: string, resolucao: string) {
       .update({ 
         status: 'Concluído', 
         resolucao,
+        tempo_gasto,
         data_resolucao: new Date().toISOString() // Preenche com o timestamp de agora
       })
       .eq('id', id)

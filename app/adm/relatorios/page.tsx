@@ -134,6 +134,7 @@ export default function RelatoriosPage() {
       { header: 'Categoria', key: 'categoria', width: 20 },
       { header: 'Descrição do Problema', key: 'descricao', width: 50 },
       { header: 'Resolução Aplicada', key: 'resolucao', width: 50 },
+      { header: 'Tempo Gasto', key: 'tempo_gasto', width: 15 },
     ];
 
     // Estilo cabeçalho Dados
@@ -150,6 +151,7 @@ export default function RelatoriosPage() {
         categoria: c.categoria,
         descricao: c.descricao,
         resolucao: c.resolucao,
+        tempo_gasto: c.tempo_gasto || '-',
       });
     });
 
@@ -256,6 +258,7 @@ export default function RelatoriosPage() {
                   <th className="px-6 py-4">Conclusão</th>
                   <th className="px-6 py-4">Solicitante</th>
                   <th className="px-6 py-4">Categoria / Local</th>
+                  <th className="px-6 py-4">Tempo Gasto</th>
                   <th className="px-6 py-4 min-w-[200px]">Resolução</th>
                 </tr>
               </thead>
@@ -274,6 +277,14 @@ export default function RelatoriosPage() {
                     <td className="px-6 py-4">
                       <div className="text-zinc-900 font-medium">{c.categoria}</div>
                       <div className="text-zinc-500 text-xs">{c.local}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
+                        </svg>
+                        {c.tempo_gasto || '-'}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="bg-green-50 text-green-800 p-3 rounded-lg text-xs border border-green-100/50 leading-relaxed">

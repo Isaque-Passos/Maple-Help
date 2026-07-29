@@ -9,4 +9,5 @@ export interface Chamado {
   data_criacao: string; // timestamptz
   data_resolucao: string | null; // timestamptz
   responsavel: string | null;
+  tempo_gasto: string | null; // ex: '30m', '1h 30m'
 }

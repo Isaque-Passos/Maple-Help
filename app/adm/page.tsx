@@ -74,9 +74,9 @@ export default function Dashboard() {
     }
   };
 
-  const handleConcluir = async (id: string, resolucao: string) => {
+  const handleConcluir = async (id: string, resolucao: string, tempo_gasto: string) => {
     try {
-      await finalizarChamado(id, resolucao);
+      await finalizarChamado(id, resolucao, tempo_gasto);
       await fetchChamados();
       setChamadoSelecionado(null); // Fecha o modal após concluir
       addToast('Chamado concluído com sucesso!', 'success');
