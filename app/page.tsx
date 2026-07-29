@@ -3,20 +3,25 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useToast } from '@/components/ToastProvider';
 import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { addToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!email.toLowerCase().endsWith('@maplebeararaxa.com.br')) {
-      alert('Acesso negado: Utilize seu e-mail institucional (@maplebeararaxa.com.br)');
+      addToast('Acesso negado: Utilize seu e-mail institucional (@maplebeararaxa.com.br)', 'error');
       return;
     }
 
@@ -25,21 +30,44 @@ export default function LoginPage() {
     if (isSignUp) {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) {
-        alert('Erro ao criar conta: ' + error.message);
+        addToast('Erro ao criar conta: ' + error.message, 'error');
       } else {
-        alert('Conta criada com sucesso! Você já pode fazer login no sistema.');
+        addToast('Conta criada com sucesso! Você já pode fazer login no sistema.', 'success');
         setIsSignUp(false); // Volta para a tela de login
       }
       setLoading(false);
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        alert('E-mail ou senha incorretos.');
+        addToast('E-mail ou senha incorretos.', 'error');
         setLoading(false);
       } else {
         router.push('/menu'); // Vai pro Hub
       }
     }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!resetEmail.toLowerCase().endsWith('@maplebeararaxa.com.br')) {
+      addToast('Utilize seu e-mail institucional (@maplebeararaxa.com.br)', 'error');
+      return;
+    }
+
+    setResetLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/`,
+    });
+
+    if (error) {
+      addToast('Erro ao enviar e-mail de recuperação: ' + error.message, 'error');
+    } else {
+      addToast('E-mail de recuperação enviado! Verifique sua caixa de entrada.', 'success');
+      setShowResetPassword(false);
+      setResetEmail('');
+    }
+    setResetLoading(false);
   };
 
   return (
@@ -51,7 +79,18 @@ export default function LoginPage() {
         {/* Lado Esquerdo - Formulário */}
         <div className="w-full md:w-1/2 bg-white p-10 md:p-14 flex flex-col justify-center relative rounded-r-[2rem] z-10 shadow-[20px_0_40px_-20px_rgba(0,0,0,0.5)]">
           
-          <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mb-6">
+          {/* Logo mobile — visível apenas em telas pequenas (#5) */}
+          <div className="flex md:hidden items-center justify-center mb-6">
+            <Image
+              src="/maple_bear_login.png"
+              alt="Maple Bear"
+              width={80}
+              height={80}
+              className="object-contain"
+            />
+          </div>
+
+          <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mb-6 hidden md:flex">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-gray-700">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
             </svg>
@@ -100,13 +139,16 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* "Lembrar-me" removido (#1) — Supabase já persiste sessão por padrão */}
             {!isSignUp && (
-              <div className="flex items-center justify-between pt-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="w-4 h-4 text-[#E31837] rounded border-gray-300 focus:ring-[#E31837]" />
-                  <span className="text-sm font-bold text-gray-600">Lembrar-me</span>
-                </label>
-                <a href="#" className="text-sm font-bold text-[#E31837] hover:underline">Esqueceu a senha?</a>
+              <div className="flex items-center justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowResetPassword(true)}
+                  className="text-sm font-bold text-[#E31837] hover:underline transition-colors"
+                >
+                  Esqueceu a senha?
+                </button>
               </div>
             )}
 
@@ -145,6 +187,55 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Recuperação de Senha (#1) */}
+      {showResetPassword && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowResetPassword(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Recuperar Senha</h2>
+              <p className="text-sm text-gray-500 mb-5 leading-relaxed">
+                Digite seu e-mail institucional e enviaremos um link para redefinir sua senha.
+              </p>
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <input
+                  type="email"
+                  required
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E31837] focus:bg-white text-gray-900 placeholder:text-gray-400 transition-all font-medium"
+                  placeholder="seu.nome@maplebeararaxa.com.br"
+                  autoFocus
+                />
+                <div className="flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPassword(false)}
+                    className="px-5 py-2.5 rounded-xl font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resetLoading}
+                    className="px-5 py-2.5 rounded-xl font-bold bg-[#E31837] text-white hover:bg-red-700 shadow-md transition-all disabled:opacity-50"
+                  >
+                    {resetLoading ? 'Enviando...' : 'Enviar Link'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

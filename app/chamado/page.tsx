@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,10 +5,14 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { abrirChamado } from '../actions/chamados';
 import { supabase } from '@/lib/supabase';
+import { extractFirstName } from '@/lib/utils';
+import { usePageTitle } from '@/lib/usePageTitle';
+import { useToast } from '@/components/ToastProvider';
 
-
-export default function Home() {
+export default function ChamadoPage() {
+  usePageTitle('Abrir Chamado');
   const router = useRouter();
+  const { addToast } = useToast();
   const [solicitante, setSolicitante] = useState('');
   const [local, setLocal] = useState('');
   const [categoria, setCategoria] = useState('');
@@ -18,17 +21,16 @@ export default function Home() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [primeiroNome, setPrimeiroNome] = useState('');
 
+  // Estado de validação inline (#6)
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const isFieldInvalid = (field: string, value: string) => touched[field] && !value.trim();
+
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user?.email) {
-        const email = session.user.email;
-        // Padrão da escola: nome.sobrenome@maplebeararaxa.com.br
-        if (email.includes('.') && email.indexOf('.') < email.indexOf('@')) {
-          const part = email.split('.')[0];
-          const name = part.charAt(0).toUpperCase() + part.slice(1);
-          setPrimeiroNome(name);
-        }
+        setPrimeiroNome(extractFirstName(session.user.email));
       }
     };
     fetchUser();
@@ -49,12 +51,16 @@ export default function Home() {
       setLocal('');
       setCategoria('');
       setDescricao('');
-    } catch (error: any) {
-      alert(error.message || 'Ocorreu um erro inesperado ao abrir o chamado.');
+      setTouched({});
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Ocorreu um erro inesperado ao abrir o chamado.';
+      addToast(message, 'error');
     } finally {
       setLoading(false);
     }
   };
+
+  const MAX_DESC = 500;
 
   return (
     <main className="min-h-screen bg-slate-50 p-6 md:p-12">
@@ -70,19 +76,20 @@ export default function Home() {
         </button>
 
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 p-8">
-          <div className="flex items-center justify-between relative mb-10 mt-2">
-            {/* Esquerda: Título */}
-            <div className="flex flex-col z-10">
+          {/* Cabeçalho responsivo (#11) */}
+          <div className="flex flex-col md:flex-row items-center md:items-center justify-between relative mb-10 mt-2 gap-4">
+            {/* Título */}
+            <div className="flex flex-col z-10 text-center md:text-left">
               <h1 className="text-4xl font-extrabold text-[#E31837] tracking-tight">
                 Maple Help
               </h1>
               <p className="text-gray-500 font-medium mt-1">Central de Suporte TI</p>
             </div>
 
-            {/* Direita: Mascote e Balão */}
+            {/* Mascote e Balão — responsivo (#11) */}
             <div className="relative flex items-center">
-              {/* Balão de Fala */}
-              <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-red-50 border border-red-100 rounded-2xl rounded-tr-none shadow-sm px-4 py-3 min-w-[200px]">
+              {/* Balão de Fala — oculto em mobile, visível em md+ */}
+              <div className="hidden md:block absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-red-50 border border-red-100 rounded-2xl rounded-tr-none shadow-sm px-4 py-3 min-w-[200px]">
                 <p className="text-slate-800 font-medium text-sm leading-relaxed">
                   {primeiroNome ? `Olá, ${primeiroNome}! Qual o problema de hoje?` : 'Olá! Qual o problema de hoje?'}
                 </p>
@@ -91,7 +98,7 @@ export default function Home() {
               </div>
 
               {/* Imagem do Mascote */}
-              <div className="relative z-10 translate-x-4">
+              <div className="relative z-10 md:translate-x-4">
                 <Image 
                   src="/maple_bear_chamado_02.png" 
                   alt="Mascote Maple Bear" 
@@ -101,12 +108,17 @@ export default function Home() {
                 />
               </div>
             </div>
+
+            {/* Saudação mobile — visível apenas em telas pequenas (#11) */}
+            <p className="md:hidden text-sm text-slate-700 font-medium text-center bg-red-50 border border-red-100 rounded-xl px-4 py-2 w-full">
+              {primeiroNome ? `Olá, ${primeiroNome}! Qual o problema de hoje?` : 'Olá! Qual o problema de hoje?'}
+            </p>
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="solicitante" className="block text-sm font-medium text-gray-700 mb-1">
-              Solicitante
+              Solicitante <span className="text-[#E31837]">*</span>
             </label>
             <input
               id="solicitante"
@@ -114,14 +126,20 @@ export default function Home() {
               required
               value={solicitante}
               onChange={(e) => setSolicitante(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E31837] focus:border-transparent transition-colors text-gray-900 placeholder:text-gray-500"
+              onBlur={() => setTouched(t => ({ ...t, solicitante: true }))}
+              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E31837] focus:border-transparent transition-colors text-gray-900 placeholder:text-gray-500 ${
+                isFieldInvalid('solicitante', solicitante) ? 'border-red-400 bg-red-50' : 'border-gray-300'
+              }`}
               placeholder="Nome do professor ou funcionário"
             />
+            {isFieldInvalid('solicitante', solicitante) && (
+              <p className="text-xs text-red-500 mt-1 font-medium">Este campo é obrigatório</p>
+            )}
           </div>
 
           <div>
             <label htmlFor="local" className="block text-sm font-medium text-gray-700 mb-1">
-              Local / Sala
+              Local / Sala <span className="text-[#E31837]">*</span>
             </label>
             <input
               id="local"
@@ -129,21 +147,30 @@ export default function Home() {
               required
               value={local}
               onChange={(e) => setLocal(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E31837] focus:border-transparent transition-colors text-gray-900 placeholder:text-gray-500"
+              onBlur={() => setTouched(t => ({ ...t, local: true }))}
+              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E31837] focus:border-transparent transition-colors text-gray-900 placeholder:text-gray-500 ${
+                isFieldInvalid('local', local) ? 'border-red-400 bg-red-50' : 'border-gray-300'
+              }`}
               placeholder="Ex: Secretaria, Sala de movimento..."
             />
+            {isFieldInvalid('local', local) && (
+              <p className="text-xs text-red-500 mt-1 font-medium">Este campo é obrigatório</p>
+            )}
           </div>
 
           <div>
             <label htmlFor="categoria" className="block text-sm font-medium text-gray-700 mb-1">
-              Categoria
+              Categoria <span className="text-[#E31837]">*</span>
             </label>
             <select
               id="categoria"
               required
               value={categoria}
               onChange={(e) => setCategoria(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E31837] focus:border-transparent transition-colors bg-white text-gray-900"
+              onBlur={() => setTouched(t => ({ ...t, categoria: true }))}
+              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E31837] focus:border-transparent transition-colors bg-white text-gray-900 ${
+                isFieldInvalid('categoria', categoria) ? 'border-red-400 bg-red-50' : 'border-gray-300'
+              }`}
             >
               <option value="" disabled>Selecione uma categoria</option>
               <option value="Wi-fi | Cabeamento">Wi-fi | Cabeamento</option>
@@ -152,21 +179,38 @@ export default function Home() {
               <option value="Ajuda | Duvidas">Ajuda | Duvidas</option>
               <option value="Outros">Outros</option>
             </select>
+            {isFieldInvalid('categoria', categoria) && (
+              <p className="text-xs text-red-500 mt-1 font-medium">Selecione uma categoria</p>
+            )}
           </div>
 
           <div>
             <label htmlFor="descricao" className="block text-sm font-medium text-gray-700 mb-1">
-              Descrição do Problema
+              Descrição do Problema <span className="text-[#E31837]">*</span>
             </label>
             <textarea
               id="descricao"
               required
               rows={4}
+              maxLength={MAX_DESC}
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E31837] focus:border-transparent transition-colors resize-none text-gray-900 placeholder:text-gray-500"
+              onBlur={() => setTouched(t => ({ ...t, descricao: true }))}
+              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E31837] focus:border-transparent transition-colors resize-none text-gray-900 placeholder:text-gray-500 ${
+                isFieldInvalid('descricao', descricao) ? 'border-red-400 bg-red-50' : 'border-gray-300'
+              }`}
               placeholder="Descreva com detalhes o problema que está ocorrendo..."
             ></textarea>
+            <div className="flex justify-between items-center mt-1">
+              {isFieldInvalid('descricao', descricao) ? (
+                <p className="text-xs text-red-500 font-medium">Este campo é obrigatório</p>
+              ) : (
+                <span />
+              )}
+              <span className={`text-xs font-medium ${descricao.length > MAX_DESC * 0.9 ? 'text-amber-600' : 'text-gray-400'}`}>
+                {descricao.length}/{MAX_DESC}
+              </span>
+            </div>
           </div>
 
           <button

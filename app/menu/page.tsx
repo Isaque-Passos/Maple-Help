@@ -4,17 +4,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { extractFirstName, isAdminEmail } from '@/lib/utils';
+import { usePageTitle } from '@/lib/usePageTitle';
 import Header from '@/components/Header';
 
-// E-mails autorizados para acessar o painel de ADM
-const ADMIN_EMAILS = [
-  'isaque@maple.local',
-  'isaque@maplebear.com',
-  'admin@maplebear.com',
-  'isaquepassos2007@gmail.com'
-];
-
 export default function HubMenu() {
+  usePageTitle('Menu Principal');
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -46,12 +41,9 @@ export default function HubMenu() {
       }
 
       const email = session.user.email || '';
-      const beforeAt = email.split('@')[0];
-      const firstName = beforeAt.split('.')[0];
-      const formattedName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
-      setUserName(formattedName);
+      setUserName(extractFirstName(email));
       
-      if (ADMIN_EMAILS.includes(email)) {
+      if (isAdminEmail(email)) {
         setIsAdmin(true);
       }
       setLoading(false);
@@ -63,7 +55,32 @@ export default function HubMenu() {
   // handleLogout removido, agora está no componente Header
 
   if (loading) {
-    return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-medium text-gray-600">Carregando Maple Help...</div>;
+    return (
+      <div className="min-h-screen bg-slate-50 p-6 md:p-12">
+        {/* Skeleton do Header (#10) */}
+        <div className="sticky top-6 z-50 w-full max-w-5xl mx-auto mb-12">
+          <div className="bg-white/85 border border-gray-100 rounded-full flex justify-between items-center px-8 py-4 shadow-sm">
+            <div className="h-7 w-32 bg-gray-200 rounded-lg animate-pulse" />
+            <div className="flex items-center gap-4">
+              <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+              <div className="h-9 w-16 bg-gray-200 rounded-full animate-pulse" />
+            </div>
+          </div>
+        </div>
+        {/* Skeleton dos Cards (#10) */}
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="bg-white rounded-3xl border border-gray-200 p-10 h-52 animate-pulse">
+            <div className="w-24 h-24 bg-gray-200 rounded-3xl mx-auto mb-6" />
+            <div className="h-6 w-20 bg-gray-200 rounded mx-auto" />
+          </div>
+          <div className="bg-white/40 rounded-3xl border-2 border-gray-200 border-dashed p-10 h-52 animate-pulse">
+            <div className="w-16 h-16 bg-gray-200 rounded-2xl mb-6" />
+            <div className="h-5 w-44 bg-gray-200 rounded mb-3" />
+            <div className="h-4 w-64 bg-gray-200 rounded" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -77,6 +94,8 @@ export default function HubMenu() {
           className="relative group"
           onMouseEnter={handleMouseEnterTI}
           onMouseLeave={handleMouseLeaveTI}
+          onFocus={() => setShowTooltip(true)}
+          onBlur={() => setShowTooltip(false)}
         >
           <Link href="/chamado" className="flex flex-col items-center justify-center text-center bg-white rounded-3xl shadow-sm border border-gray-200 p-10 hover:shadow-xl transition-all hover:-translate-y-2 cursor-pointer h-full">
             <div className="w-24 h-24 bg-red-50 rounded-3xl flex items-center justify-center mb-6 text-[#E31837] group-hover:bg-[#E31837] group-hover:text-white transition-colors duration-300 shadow-sm group-hover:shadow-md">
@@ -85,11 +104,15 @@ export default function HubMenu() {
               </svg>
             </div>
             <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">TI</h2>
+            {/* Descrição permanente visível em mobile (#12) */}
+            <p className="text-sm text-gray-500 font-medium mt-2 md:hidden">
+              Lousa digital, internet, computadores e sistemas.
+            </p>
           </Link>
           
-          {/* Tooltip Popup */}
+          {/* Tooltip Popup — desktop only (#12) */}
           {showTooltip && (
-            <div className="absolute top-[105%] left-1/2 -translate-x-1/2 mt-4 w-72 bg-white text-gray-600 font-medium text-sm p-4 rounded-xl shadow-lg border border-gray-100 z-50 animate-in fade-in zoom-in duration-200">
+            <div className="hidden md:block absolute top-[105%] left-1/2 -translate-x-1/2 mt-4 w-72 bg-white text-gray-600 font-medium text-sm p-4 rounded-xl shadow-lg border border-gray-100 z-50 animate-in fade-in zoom-in duration-200">
               <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-t border-l border-gray-100 rotate-45"></div>
               <div className="relative z-10 text-center leading-relaxed">
                 Abrir chamados referentes a problemas na lousa digital, internet, computadores, e-mail e sistemas da escola.

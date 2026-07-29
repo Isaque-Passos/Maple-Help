@@ -3,12 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { obterChamadosConcluidos } from '@/app/actions/chamados';
+import { useToast } from '@/components/ToastProvider';
+import { usePageTitle } from '@/lib/usePageTitle';
 import { Chamado } from '@/types/database';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
 export default function RelatoriosPage() {
   const router = useRouter();
+  const { addToast } = useToast();
+  usePageTitle('Relatórios');
   
   // Estado para filtros
   const hoje = new Date();
@@ -40,7 +44,7 @@ export default function RelatoriosPage() {
         setChamados(dados);
       } catch (error) {
         console.error("Erro ao buscar relatórios:", error);
-        alert("Erro ao carregar relatórios.");
+        addToast('Erro ao carregar relatórios.', 'error');
       } finally {
         setLoading(false);
       }
@@ -88,7 +92,7 @@ export default function RelatoriosPage() {
   // Função para Exportar para Excel (.xlsx)
   const exportarParaExcel = async () => {
     if (chamados.length === 0) {
-      alert("Não há dados para exportar neste período.");
+      addToast('Não há dados para exportar neste período.', 'warning');
       return;
     }
 

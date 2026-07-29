@@ -1,17 +1,20 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable react-hooks/set-state-in-effect */
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { extractFirstName } from '@/lib/utils';
+import { usePageTitle } from '@/lib/usePageTitle';
+import { useToast } from '@/components/ToastProvider';
 import { obterChamadosAbertos, assumirChamado, finalizarChamado, deletarChamado } from '../actions/chamados';
 import { Chamado } from '@/types/database';
 import { ChamadoCard } from '@/components/ChamadoCard';
 import { ChamadoModal } from '@/components/ChamadoModal';
 
 export default function Dashboard() {
+  usePageTitle('Painel ADM');
   const router = useRouter();
+  const { addToast } = useToast();
   const [chamados, setChamados] = useState<Chamado[]>([]);
   const [loading, setLoading] = useState(true);
   const [chamadoSelecionado, setChamadoSelecionado] = useState<Chamado | null>(null);
@@ -33,13 +36,7 @@ export default function Dashboard() {
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user?.email) {
-        const email = session.user.email;
-        // Pega a parte antes do @
-        const beforeAt = email.split('@')[0];
-        // Pega a parte antes do primeiro ponto e capitaliza
-        const firstName = beforeAt.split('.')[0];
-        const formattedName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
-        setAdminName(formattedName);
+        setAdminName(extractFirstName(session.user.email));
       }
     };
     getSession();
@@ -60,6 +57,7 @@ export default function Dashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAssumir = async (id: string) => {
@@ -69,8 +67,10 @@ export default function Dashboard() {
       
       // Atualiza o modal aberto se necessário
       setChamadoSelecionado(prev => prev ? { ...prev, status: 'Em Andamento', responsavel: adminName } : null);
-    } catch (error: any) {
-      alert(error.message);
+      addToast(`Chamado assumido por ${adminName}.`, 'success');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao assumir chamado.';
+      addToast(message, 'error');
     }
   };
 
@@ -79,8 +79,10 @@ export default function Dashboard() {
       await finalizarChamado(id, resolucao);
       await fetchChamados();
       setChamadoSelecionado(null); // Fecha o modal após concluir
-    } catch (error: any) {
-      alert(error.message);
+      addToast('Chamado concluído com sucesso!', 'success');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao concluir chamado.';
+      addToast(message, 'error');
     }
   };
 
@@ -89,8 +91,10 @@ export default function Dashboard() {
       await deletarChamado(id);
       await fetchChamados();
       setChamadoSelecionado(null);
-    } catch (error: any) {
-      alert(error.message);
+      addToast('Chamado removido.', 'warning');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao deletar chamado.';
+      addToast(message, 'error');
     }
   };
 
@@ -102,8 +106,41 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-zinc-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#E31837]"></div>
+      <div className="min-h-screen bg-zinc-50 p-8">
+        {/* Skeleton do botão Voltar */}
+        <div className="mb-6 h-5 w-40 bg-zinc-200 rounded animate-pulse" />
+        
+        {/* Skeleton do cabeçalho */}
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <div className="h-8 w-64 bg-zinc-200 rounded-lg animate-pulse mb-2" />
+            <div className="h-4 w-80 bg-zinc-200 rounded animate-pulse" />
+          </div>
+          <div className="h-10 w-36 bg-zinc-200 rounded-lg animate-pulse" />
+        </div>
+
+        {/* Skeleton do Kanban (#10) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[0, 1, 2].map((col) => (
+            <div key={col} className="flex flex-col bg-zinc-100/50 rounded-2xl p-4 border border-zinc-200">
+              <div className="flex items-center gap-2 mb-4 px-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-zinc-300 animate-pulse" />
+                <div className="h-5 w-28 bg-zinc-300 rounded animate-pulse" />
+              </div>
+              <div className="flex flex-col gap-3">
+                {[0, 1].map((card) => (
+                  <div key={card} className="bg-white p-4 rounded-2xl border border-zinc-200 animate-pulse">
+                    <div className="h-4 w-32 bg-zinc-200 rounded mb-2" />
+                    <div className="h-3 w-24 bg-zinc-200 rounded mb-3" />
+                    <div className="h-6 w-20 bg-zinc-200 rounded-full mb-3" />
+                    <div className="h-3 w-full bg-zinc-200 rounded mb-1" />
+                    <div className="h-3 w-3/4 bg-zinc-200 rounded" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
