@@ -162,6 +162,20 @@ export function ChamadoModal({ chamado, onClose, onAssumir, onConcluir, onDelete
             <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
               <p className="text-xs text-zinc-500 font-semibold uppercase tracking-wider mb-2">Descrição do Problema</p>
               <p className="text-zinc-800 whitespace-pre-wrap leading-relaxed">{chamado.descricao}</p>
+              
+              {chamado.anexo_url && (
+                <div className="mt-4 pt-4 border-t border-zinc-200">
+                  <p className="text-xs text-zinc-500 font-semibold uppercase tracking-wider mb-2">Anexo</p>
+                  <a href={chamado.anexo_url} target="_blank" rel="noopener noreferrer" className="block max-w-sm rounded-lg overflow-hidden border border-zinc-200 shadow-sm hover:shadow-md transition-shadow">
+                    <img 
+                      src={chamado.anexo_url} 
+                      alt="Anexo do Chamado" 
+                      className="w-full h-auto object-cover max-h-64"
+                      loading="lazy"
+                    />
+                  </a>
+                </div>
+              )}
             </div>
 
             {/* Área de Resolução para Chamados em Andamento */}

@@ -38,7 +38,7 @@ async function getSupabase() {
 export async function abrirChamado(dados: Omit<Chamado, 'id' | 'status' | 'resolucao' | 'data_criacao' | 'data_resolucao' | 'responsavel' | 'tempo_gasto'>) {
   try {
     const supabase = await getSupabase();
-    const { solicitante, local, categoria, descricao } = dados;
+    const { solicitante, local, categoria, descricao, anexo_url } = dados;
     
     // Status será salvo como 'Pendente' para alinhar com a estrutura do BD.
     // data_criacao geralmente tem valor default de now() no banco, então omitimos.
@@ -50,6 +50,7 @@ export async function abrirChamado(dados: Omit<Chamado, 'id' | 'status' | 'resol
           local, 
           categoria, 
           descricao,
+          anexo_url,
           status: 'Pendente'
         }
       ])

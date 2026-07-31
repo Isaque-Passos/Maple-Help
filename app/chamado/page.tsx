@@ -20,6 +20,7 @@ export default function ChamadoPage() {
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [primeiroNome, setPrimeiroNome] = useState('');
+  const [anexo, setAnexo] = useState<File | null>(null);
 
   // Estado de validação inline (#6)
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -41,7 +42,29 @@ export default function ChamadoPage() {
     setLoading(true);
 
     try {
-      await abrirChamado({ solicitante, local, categoria, descricao });
+      let anexo_url = null;
+      
+      if (anexo) {
+        // Criar um nome único para o arquivo
+        const fileExt = anexo.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('chamados-anexos')
+          .upload(fileName, anexo);
+          
+        if (uploadError) {
+          throw new Error('Erro ao fazer upload da imagem: ' + uploadError.message);
+        }
+        
+        const { data: publicUrlData } = supabase.storage
+          .from('chamados-anexos')
+          .getPublicUrl(fileName);
+          
+        anexo_url = publicUrlData.publicUrl;
+      }
+
+      await abrirChamado({ solicitante, local, categoria, descricao, anexo_url });
       
       // Feedback de sucesso com modal customizado
       setShowSuccess(true);
@@ -51,6 +74,7 @@ export default function ChamadoPage() {
       setLocal('');
       setCategoria('');
       setDescricao('');
+      setAnexo(null);
       setTouched({});
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Ocorreu um erro inesperado ao abrir o chamado.';
@@ -211,6 +235,48 @@ export default function ChamadoPage() {
                 {descricao.length}/{MAX_DESC}
               </span>
             </div>
+          </div>
+
+          <div>
+            <label htmlFor="anexo" className="block text-sm font-medium text-gray-700 mb-1">
+              Anexo <span className="text-gray-400 text-xs font-normal ml-1">- Opcional</span>
+            </label>
+            <div className="relative">
+              <input
+                id="anexo"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    setAnexo(e.target.files[0]);
+                  }
+                }}
+              />
+              <label
+                htmlFor="anexo"
+                className="flex items-center justify-center w-full px-4 py-4 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-red-50 hover:border-[#E31837] hover:text-[#E31837] cursor-pointer transition-all"
+              >
+                {anexo ? (
+                  <span className="flex items-center gap-2 text-green-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                    Arquivo selecionado: {anexo.name}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                    Clique aqui para anexar uma foto ou print
+                  </span>
+                )}
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mt-1.5">
+              Envie uma foto ou print da tela mostrando o problema para ajudar a TI.
+            </p>
           </div>
 
           <button

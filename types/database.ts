@@ -10,4 +10,5 @@ export interface Chamado {
   data_resolucao: string | null; // timestamptz
   responsavel: string | null;
   tempo_gasto: string | null; // ex: '30m', '1h 30m'
+  anexo_url?: string | null; // URL pública da imagem no storage
 }
