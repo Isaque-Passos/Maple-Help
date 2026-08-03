@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { obterChamadosConcluidos } from '@/app/actions/chamados';
+import { obterChamadosConcluidos, obterTodosChamadosConcluidos } from '@/app/actions/chamados';
 import { useToast } from '@/components/ToastProvider';
 import { usePageTitle } from '@/lib/usePageTitle';
 import { Chamado } from '@/types/database';
@@ -20,8 +20,14 @@ export default function RelatoriosPage() {
   const [ano, setAno] = useState<number>(hoje.getFullYear());
   
   // Estado para dados
-  const [chamados, setChamados] = useState<Chamado[]>([]);
+  const [chamados, setChamados] = useState<Chamado[]>([]); // Apenas da página atual
+  const [todosChamados, setTodosChamados] = useState<Chamado[]>([]); // Todos do mês para métricas
+  const [totalChamados, setTotalChamados] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
+  
+  // Estado de paginação
+  const [page, setPage] = useState<number>(1);
+  const limit = 50;
 
   // Opções para os selects
   const meses = [
@@ -32,16 +38,16 @@ export default function RelatoriosPage() {
     { value: 9, label: 'Setembro' }, { value: 10, label: 'Outubro' },
     { value: 11, label: 'Novembro' }, { value: 12, label: 'Dezembro' }
   ];
+  const anos = [2026, 2027];
 
-  const anos = Array.from({ length: 5 }, (_, i) => hoje.getFullYear() - i);
-
-  // Buscar dados
+  // Buscar dados da página atual
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
       try {
-        const dados = await obterChamadosConcluidos(mes, ano);
-        setChamados(dados);
+        const { data, count } = await obterChamadosConcluidos(mes, ano, page, limit);
+        setChamados(data);
+        setTotalChamados(count);
       } catch (error) {
         console.error("Erro ao buscar relatórios:", error);
         addToast('Erro ao carregar relatórios.', 'error');
@@ -50,32 +56,45 @@ export default function RelatoriosPage() {
       }
     }
     fetchData();
-  }, [mes, ano]);
+  }, [mes, ano, page]);
 
-  // Cálculo das Métricas
-  const totalChamados = chamados.length;
+  // Buscar todos os dados para métricas sempre que mudar mês/ano
+  useEffect(() => {
+    async function fetchTodos() {
+      try {
+        const dados = await obterTodosChamadosConcluidos(mes, ano);
+        setTodosChamados(dados);
+      } catch (error) {
+        console.error("Erro ao buscar dados para métricas", error);
+      }
+    }
+    fetchTodos();
+    setPage(1); // Reseta a página para 1 quando muda a data
+  }, [mes, ano]);
   
-  // Encontrar categoria mais afetada
-  const categoriasContagem = chamados.reduce((acc, c) => {
+  const totalPages = Math.ceil(totalChamados / limit) || 1;
+
+  // Encontrar categoria mais afetada (usando todosChamados)
+  const categoriasContagem = todosChamados.reduce((acc, c) => {
     acc[c.categoria] = (acc[c.categoria] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
   
   const categoriaMaisAfetada = Object.entries(categoriasContagem).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
 
-  // Encontrar tempo médio de resolução
+  // Encontrar tempo médio de resolução (usando todosChamados)
   const mediaAtendimento = () => {
-    if (chamados.length === 0) return '0h';
+    if (todosChamados.length === 0) return '0h';
     
     let totalMs = 0;
-    chamados.forEach(c => {
+    todosChamados.forEach(c => {
       if (c.data_resolucao && c.data_criacao) {
         const diff = new Date(c.data_resolucao).getTime() - new Date(c.data_criacao).getTime();
         totalMs += diff;
       }
     });
     
-    const mediaMs = totalMs / chamados.length;
+    const mediaMs = totalMs / todosChamados.length;
     const mediaHoras = mediaMs / (1000 * 60 * 60);
     
     if (mediaHoras < 1) {
@@ -141,7 +160,8 @@ export default function RelatoriosPage() {
     sheetDados.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
     sheetDados.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE31837' } };
 
-    chamados.forEach(c => {
+    // Exportar todos os chamados do mês e não só os da página atual
+    todosChamados.forEach(c => {
       sheetDados.addRow({
         data_criacao: new Date(c.data_criacao).toLocaleString('pt-BR'),
         data_resolucao: c.data_resolucao ? new Date(c.data_resolucao).toLocaleString('pt-BR') : '',
@@ -250,7 +270,7 @@ export default function RelatoriosPage() {
             Nenhum chamado concluído encontrado neste período.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto flex flex-col justify-between">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-zinc-50 text-zinc-600 text-xs font-bold uppercase tracking-wider border-b border-zinc-200">
@@ -296,6 +316,34 @@ export default function RelatoriosPage() {
                 ))}
               </tbody>
             </table>
+            
+            {/* Controles de Paginação */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-200 bg-zinc-50/30">
+                <p className="text-sm text-zinc-500">
+                  Mostrando de <span className="font-semibold text-zinc-800">{((page - 1) * limit) + 1}</span> a <span className="font-semibold text-zinc-800">{Math.min(page * limit, totalChamados)}</span> de <span className="font-semibold text-zinc-800">{totalChamados}</span> resultados
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="px-3 py-1.5 text-sm font-medium border border-zinc-300 rounded-md bg-white text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Anterior
+                  </button>
+                  <span className="text-sm text-zinc-600 font-medium px-2">
+                    Página {page} de {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="px-3 py-1.5 text-sm font-medium border border-zinc-300 rounded-md bg-white text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Próximo
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

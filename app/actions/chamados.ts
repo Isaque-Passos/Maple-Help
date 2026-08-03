@@ -98,10 +98,46 @@ export async function obterChamadosAbertos() {
  * @param ano Ano.
  * @returns Lista de chamados concluídos no período especificado.
  */
-export async function obterChamadosConcluidos(mes: number, ano: number) {
+export async function obterChamadosConcluidos(mes: number, ano: number, page: number = 1, limit: number = 50) {
   try {
     const supabase = await getSupabase();
     // Definimos o início e fim do mês para criar o range de datas
+    const dataInicio = new Date(ano, mes - 1, 1).toISOString();
+    const dataFim = new Date(ano, mes, 1).toISOString();
+    
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    const { data, error, count } = await supabase
+      .from('chamados')
+      .select('*', { count: 'exact' })
+      .eq('status', 'Concluído')
+      .gte('data_resolucao', dataInicio) // Maior ou igual ao início do mês
+      .lt('data_resolucao', dataFim)     // Menor que o primeiro dia do próximo mês
+      .order('data_resolucao', { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      throw error;
+    }
+
+    return { 
+      data: data as Chamado[], 
+      count: count || 0 
+    };
+  } catch (error: any) {
+    console.error('Erro em obterChamadosConcluidos:', error);
+    throw new Error(`Não foi possível carregar o relatório de concluídos: ${error.message}`);
+  }
+}
+
+/**
+ * Busca TODOS os chamados concluídos de um mês específico (sem paginação).
+ * Útil para exportação Excel e cálculo de métricas.
+ */
+export async function obterTodosChamadosConcluidos(mes: number, ano: number) {
+  try {
+    const supabase = await getSupabase();
     const dataInicio = new Date(ano, mes - 1, 1).toISOString();
     const dataFim = new Date(ano, mes, 1).toISOString();
 
@@ -109,8 +145,8 @@ export async function obterChamadosConcluidos(mes: number, ano: number) {
       .from('chamados')
       .select('*')
       .eq('status', 'Concluído')
-      .gte('data_resolucao', dataInicio) // Maior ou igual ao início do mês
-      .lt('data_resolucao', dataFim)     // Menor que o primeiro dia do próximo mês
+      .gte('data_resolucao', dataInicio)
+      .lt('data_resolucao', dataFim)
       .order('data_resolucao', { ascending: false });
 
     if (error) {
@@ -119,8 +155,8 @@ export async function obterChamadosConcluidos(mes: number, ano: number) {
 
     return data as Chamado[];
   } catch (error: any) {
-    console.error('Erro em obterChamadosConcluidos:', error);
-    throw new Error(`Não foi possível carregar o relatório de concluídos: ${error.message}`);
+    console.error('Erro em obterTodosChamadosConcluidos:', error);
+    throw new Error(`Não foi possível carregar os dados para exportação: ${error.message}`);
   }
 }
 
@@ -205,5 +241,43 @@ export async function deletarChamado(id: string) {
   } catch (error: any) {
     console.error('Erro em deletarChamado:', error);
     throw new Error(`Não foi possível deletar o chamado: ${error.message}`);
+  }
+}
+
+/**
+ * Busca todos os chamados abertos pelo usuário logado atualmente.
+ * Usado na tela "Meus Chamados".
+ */
+export async function obterMeusChamados() {
+  try {
+    const supabase = await getSupabase();
+    
+    // Pega a sessão atual para descobrir quem é o usuário
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session) {
+      throw new Error('Usuário não autenticado.');
+    }
+    
+    const userId = sessionData.session.user.id;
+
+    // Busca apenas os chamados onde user_id bate com o usuário atual
+    const { data, error } = await supabase
+      .from('chamados')
+      .select('*')
+      .eq('user_id', userId)
+      .order('data_criacao', { ascending: false });
+
+    if (error) {
+      if (error.code === '42703') { // Column does not exist
+         console.warn("A coluna user_id não existe no banco. Os dados retornarão vazios.");
+         return [] as Chamado[];
+      }
+      throw error;
+    }
+
+    return data as Chamado[];
+  } catch (error: any) {
+    console.error('Erro em obterMeusChamados:', error);
+    throw new Error(`Não foi possível carregar seus chamados: ${error.message}`);
   }
 }

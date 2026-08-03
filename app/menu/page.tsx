@@ -121,6 +121,19 @@ export default function HubMenu() {
           )}
         </div>
 
+        {/* Card de Meus Chamados */}
+        <Link href="/chamado/meus-chamados" className="flex flex-col items-center justify-center text-center bg-white rounded-3xl shadow-sm border border-gray-200 p-10 hover:shadow-xl transition-all hover:-translate-y-2 cursor-pointer h-full group">
+          <div className="w-24 h-24 bg-blue-50 rounded-3xl flex items-center justify-center mb-6 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300 shadow-sm group-hover:shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+            </svg>
+          </div>
+          <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Meus Chamados</h2>
+          <p className="text-sm text-gray-500 font-medium mt-2 md:hidden">
+            Acompanhe o andamento dos seus pedidos.
+          </p>
+        </Link>
+
         {/* Card Estrutural (Futuro) */}
         <div className="bg-white/40 rounded-3xl border-2 border-gray-200 border-dashed p-10 relative overflow-hidden">
           <div className="absolute inset-0 bg-slate-50/60 flex items-center justify-center backdrop-blur-[2px] z-10">

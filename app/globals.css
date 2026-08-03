@@ -21,6 +21,20 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Garante que todos os botões e áreas de interação tenham o cursor de "mãozinha" */
+@layer base {
+  button, 
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  a,
+  select,
+  label {
+    cursor: pointer !important;
+  }
+}
+
 /* Toast slide-in animation */
 @keyframes slideIn {
   from {

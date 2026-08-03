@@ -11,4 +11,5 @@ export interface Chamado {
   responsavel: string | null;
   tempo_gasto: string | null; // ex: '30m', '1h 30m'
   anexo_url?: string | null; // URL pública da imagem no storage
+  user_id?: string; // ID do usuário que abriu o chamado (Supabase Auth)
 }

@@ -31,6 +31,37 @@ export default function Dashboard() {
     }
   };
 
+  // Função para tocar o som de notificação usando Web Audio API
+  const playNotificationSound = async () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Alguns navegadores suspendem o contexto até que haja interação
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
+
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Frequência A5 (agudo suave)
+      oscillator.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.1); // Transição para C6 (ding-dong)
+      
+      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.05);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + 0.5);
+    } catch (e) {
+      console.log('Web Audio API não suportada ou bloqueada pelo navegador', e);
+    }
+  };
+
   useEffect(() => {
     // Buscar usuário logado
     const getSession = async () => {
@@ -48,8 +79,12 @@ export default function Dashboard() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'chamados' },
-        () => {
+        (payload) => {
           fetchChamados();
+          // Tocar som apenas se for um NOVO chamado
+          if (payload.eventType === 'INSERT') {
+            playNotificationSound();
+          }
         }
       )
       .subscribe();
