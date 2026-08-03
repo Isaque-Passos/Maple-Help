@@ -11,6 +11,10 @@ import { Chamado } from '@/types/database';
 import { ChamadoCard } from '@/components/ChamadoCard';
 import { ChamadoModal } from '@/components/ChamadoModal';
 
+// O AudioContext precisa ser global e persistente para tocar em abas fora de foco (segundo plano)
+let globalAudioCtx: AudioContext | null = null;
+
+
 export default function Dashboard() {
   usePageTitle('Painel ADM');
   const router = useRouter();
@@ -32,37 +36,59 @@ export default function Dashboard() {
   };
 
   // Função para tocar o som de notificação usando Web Audio API
-  const playNotificationSound = async () => {
+  const playNotificationSound = () => {
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      if (!globalAudioCtx) return;
       
-      // Alguns navegadores suspendem o contexto até que haja interação
-      if (audioCtx.state === 'suspended') {
-        await audioCtx.resume();
-      }
+      // Função auxiliar para criar um bipe individual
+      const playBeep = (startTime: number) => {
+        const oscillator = globalAudioCtx!.createOscillator();
+        const gainNode = globalAudioCtx!.createGain();
+        
+        // Onda quadrada (square) é mais estridente e corta barulhos de fundo
+        oscillator.type = 'square';
+        oscillator.frequency.value = 2500; // Frequência alta para chamar atenção
+        
+        // Sobe rápido, toca por 100ms e desce rápido
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.2, startTime + 0.01);
+        gainNode.gain.linearRampToValueAtTime(0, startTime + 0.15);
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(globalAudioCtx!.destination);
+        
+        oscillator.start(startTime);
+        oscillator.stop(startTime + 0.15);
+      };
 
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Frequência A5 (agudo suave)
-      oscillator.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.1); // Transição para C6 (ding-dong)
-      
-      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.05);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      
-      oscillator.start(audioCtx.currentTime);
-      oscillator.stop(audioCtx.currentTime + 0.5);
+      const now = globalAudioCtx.currentTime;
+      // Toca 3 bipes bem rápidos e curtos (padrão de alerta clássico)
+      playBeep(now);
+      playBeep(now + 0.2);
+      playBeep(now + 0.4);
+
     } catch (e) {
-      console.log('Web Audio API não suportada ou bloqueada pelo navegador', e);
+      console.log('Erro ao tocar bipe', e);
     }
   };
 
   useEffect(() => {
+    // Inicializa o AudioContext global uma única vez
+    if (typeof window !== 'undefined' && !globalAudioCtx) {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      globalAudioCtx = new AudioContextClass();
+    }
+
+    // Desbloqueia o áudio permanentemente na primeira interação do usuário na página
+    const unlockAudio = async () => {
+      if (globalAudioCtx && globalAudioCtx.state === 'suspended') {
+        await globalAudioCtx.resume();
+      }
+    };
+    
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('keydown', unlockAudio);
+
     // Buscar usuário logado
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -91,6 +117,8 @@ export default function Dashboard() {
 
     return () => {
       supabase.removeChannel(channel);
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('keydown', unlockAudio);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
