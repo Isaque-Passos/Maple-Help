@@ -42,13 +42,23 @@ O **Maple Help** é um sistema interno de helpdesk (abertura de chamados de TI e
 
 ---
 
-## 🎯 Próximo Passo: Bloco 5 (Painel de Administração e Relatórios)
+5. **Painel de Administração (`app/adm` e sub-rotas):**
+   - Interface premium com abas/filtros para listagem de chamados.
+   - Componente `ChamadoCard` para visualização individual de chamados.
+   - Componente `ChamadoModal` para ver detalhes e ações do chamado (mudar status, deletar).
+   - Confirmações de deleção seguras com `ConfirmModal`.
+   - Feedback de ações em toda a plataforma através do `ToastProvider`.
+   - Seção de `relatorios` implementada.
 
-A estrutura base da pasta `/adm` (layout e page) já existe, mas está apenas como um esqueleto. O próximo objetivo que o usuário (Isaque) vai pedir é construir o painel para a equipe de TI visualizar e gerenciar os chamados.
+---
+
+## 🎯 Próximo Passo: Bloco 6 (Manutenção Estrutural e Refinamentos)
+
+O núcleo do sistema de chamados de TI está operando com sucesso. O próximo objetivo que o usuário (Isaque) pode pedir é:
 
 **O que você deve implementar a seguir quando o usuário pedir:**
-1. **Listagem de Chamados:** Buscar os chamados abertos no Supabase (já existe uma função `obterChamadosAbertos` em `actions/chamados.ts`).
-2. **Interface Kanban ou Tabela UI Premium:** Criar uma tela bonita para listar os chamados, permitindo que a TI mude o status (ex: Pendente -> Em Andamento -> Resolvido).
-3. **Detalhes do Chamado:** Permitir clicar em um chamado para ver a descrição completa, quem abriu, onde é o problema e adicionar notas de resolução.
+1. **Módulo de Manutenção Estrutural:** Habilitar o card de "Manutenção Estrutural" no menu (`app/menu/page.tsx`) e criar o fluxo de chamados específico para manutenção, separando os chamados de TI dos chamados de Manutenção.
+2. **Sistema de Notificações:** Envio de e-mail ou notificação quando um chamado for atualizado ou respondido.
+3. **Aprimoramentos de Relatórios:** Expandir a rota `/adm/relatorios` para incluir gráficos de chamados fechados vs abertos, tempo médio de resolução, etc.
 
-Vá em frente e ajude o Isaque a construir o melhor sistema de chamados que a escola já viu! 🚀
+Vá em frente e ajude o Isaque a continuar evoluindo o melhor sistema de chamados que a escola já viu! 🚀

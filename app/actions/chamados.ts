@@ -30,6 +30,22 @@ async function getSupabase() {
   );
 }
 
+import { headers } from 'next/headers';
+import { z } from 'zod';
+
+// Configuração do Rate Limit na memória (simples)
+const rateLimitMap = new Map<string, { count: number, lastReset: number }>();
+const RATE_LIMIT = 5; // Máximo de chamados
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // a cada 10 minutos
+
+const abrirChamadoSchema = z.object({
+  solicitante: z.string().min(1, 'Solicitante é obrigatório.').max(100),
+  local: z.string().min(1, 'Local é obrigatório.').max(150),
+  categoria: z.string().min(1, 'Categoria é obrigatória.').max(50),
+  descricao: z.string().min(10, 'A descrição deve ter pelo menos 10 caracteres.').max(1000),
+  anexo_url: z.string().url('URL inválida').optional().or(z.literal('')),
+});
+
 /**
  * Cria um novo chamado no sistema.
  * @param dados Dados do chamado (solicitante, local, categoria, descricao).
@@ -37,20 +53,37 @@ async function getSupabase() {
  */
 export async function abrirChamado(dados: Omit<Chamado, 'id' | 'status' | 'resolucao' | 'data_criacao' | 'data_resolucao' | 'responsavel' | 'tempo_gasto'>) {
   try {
+    // Rate Limiting (Limite de taxa)
+    const reqHeaders = await headers();
+    const ip = reqHeaders.get('x-forwarded-for') || '127.0.0.1';
+    
+    const now = Date.now();
+    const rateRecord = rateLimitMap.get(ip);
+    
+    if (rateRecord && now - rateRecord.lastReset < RATE_LIMIT_WINDOW_MS) {
+      if (rateRecord.count >= RATE_LIMIT) {
+        throw new Error('Você atingiu o limite de envio. Tente novamente em alguns minutos.');
+      }
+      rateRecord.count += 1;
+    } else {
+      rateLimitMap.set(ip, { count: 1, lastReset: now });
+    }
+
+    // 1. Validação de Dados com Zod
+    const dadosValidados = abrirChamadoSchema.parse(dados);
+
     const supabase = await getSupabase();
-    const { solicitante, local, categoria, descricao, anexo_url } = dados;
     
     // Status será salvo como 'Pendente' para alinhar com a estrutura do BD.
-    // data_criacao geralmente tem valor default de now() no banco, então omitimos.
     const { data, error } = await supabase
       .from('chamados')
       .insert([
         { 
-          solicitante, 
-          local, 
-          categoria, 
-          descricao,
-          anexo_url,
+          solicitante: dadosValidados.solicitante, 
+          local: dadosValidados.local, 
+          categoria: dadosValidados.categoria, 
+          descricao: dadosValidados.descricao,
+          anexo_url: dadosValidados.anexo_url,
           status: 'Pendente'
         }
       ])
@@ -275,9 +308,39 @@ export async function obterMeusChamados() {
       throw error;
     }
 
-    return data as Chamado[];
+     return data as Chamado[];
   } catch (error: any) {
     console.error('Erro em obterMeusChamados:', error);
     throw new Error(`Não foi possível carregar seus chamados: ${error.message}`);
+  }
+}
+
+/**
+ * Busca todos os chamados criados em um determinado mês e ano, 
+ * independentemente do status, para alimentar gráficos estatísticos.
+ */
+export async function obterEstatisticasMensais(mes: number, ano: number) {
+  try {
+    const supabase = await getSupabase();
+    
+    // Início e fim do mês
+    const dataInicio = new Date(ano, mes - 1, 1).toISOString();
+    const dataFim = new Date(ano, mes, 1).toISOString();
+
+    const { data, error } = await supabase
+      .from('chamados')
+      .select('*')
+      .gte('data_criacao', dataInicio)
+      .lt('data_criacao', dataFim)
+      .order('data_criacao', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return data as Chamado[];
+  } catch (error: any) {
+    console.error('Erro em obterEstatisticasMensais:', error);
+    throw new Error(`Não foi possível carregar estatísticas: ${error.message}`);
   }
 }

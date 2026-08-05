@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { obterChamadosConcluidos, obterTodosChamadosConcluidos } from '@/app/actions/chamados';
+import { obterChamadosConcluidos, obterTodosChamadosConcluidos, obterEstatisticasMensais } from '@/app/actions/chamados';
 import { useToast } from '@/components/ToastProvider';
 import { usePageTitle } from '@/lib/usePageTitle';
 import { Chamado } from '@/types/database';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function RelatoriosPage() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function RelatoriosPage() {
   // Estado para dados
   const [chamados, setChamados] = useState<Chamado[]>([]); // Apenas da página atual
   const [todosChamados, setTodosChamados] = useState<Chamado[]>([]); // Todos do mês para métricas
+  const [estatisticasMensais, setEstatisticasMensais] = useState<Chamado[]>([]); // Todos criados no mês
   const [totalChamados, setTotalChamados] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   
@@ -64,6 +66,8 @@ export default function RelatoriosPage() {
       try {
         const dados = await obterTodosChamadosConcluidos(mes, ano);
         setTodosChamados(dados);
+        const stats = await obterEstatisticasMensais(mes, ano);
+        setEstatisticasMensais(stats);
       } catch (error) {
         console.error("Erro ao buscar dados para métricas", error);
       }
@@ -107,6 +111,33 @@ export default function RelatoriosPage() {
     }
     return `${mediaHoras.toFixed(1)}h`;
   };
+
+  // --- DADOS PARA GRÁFICOS ---
+  const statusCount = estatisticasMensais.reduce((acc, c) => {
+    acc[c.status] = (acc[c.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const dataPie = Object.keys(statusCount).map(key => ({
+    name: key,
+    value: statusCount[key]
+  }));
+
+  const COLORS = {
+    'Concluído': '#10b981', // emerald-500
+    'Pendente': '#f59e0b',  // amber-500
+    'Em Andamento': '#3b82f6', // blue-500
+  };
+
+  const categoriasChart = estatisticasMensais.reduce((acc, c) => {
+    acc[c.categoria] = (acc[c.categoria] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const dataBar = Object.keys(categoriasChart).map(key => ({
+    name: key,
+    Quantidade: categoriasChart[key]
+  })).sort((a, b) => b.Quantidade - a.Quantidade);
 
   // Função para Exportar para Excel (.xlsx)
   const exportarParaExcel = async () => {
@@ -256,6 +287,62 @@ export default function RelatoriosPage() {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100 flex flex-col justify-center">
           <h3 className="text-zinc-500 font-medium text-sm mb-1 uppercase tracking-wide">Média de Atendimento</h3>
           <p className="text-4xl font-bold text-zinc-900">{loading ? '-' : mediaAtendimento()}</p>
+        </div>
+      </div>
+
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Gráfico de Status (Pizza) */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100">
+          <h3 className="text-zinc-900 font-bold mb-4">Status dos Chamados (Mês Atual)</h3>
+          {estatisticasMensais.length === 0 ? (
+            <div className="h-[300px] flex items-center justify-center text-zinc-500">Sem dados</div>
+          ) : (
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={dataPie}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {dataPie.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[entry.name as keyof typeof COLORS] || '#E31837'} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend verticalAlign="bottom" height={36}/>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        {/* Gráfico de Categorias (Barras) */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100">
+          <h3 className="text-zinc-900 font-bold mb-4">Volume por Categoria (Mês Atual)</h3>
+          {estatisticasMensais.length === 0 ? (
+            <div className="h-[300px] flex items-center justify-center text-zinc-500">Sem dados</div>
+          ) : (
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={dataBar}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
+                  <XAxis dataKey="name" tick={{fill: '#71717a', fontSize: 12}} tickLine={false} axisLine={false} />
+                  <YAxis tick={{fill: '#71717a', fontSize: 12}} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip cursor={{fill: '#f4f4f5'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                  <Bar dataKey="Quantidade" fill="#E31837" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </div>
 
