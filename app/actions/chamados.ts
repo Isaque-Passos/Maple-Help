@@ -74,6 +74,10 @@ export async function abrirChamado(dados: Omit<Chamado, 'id' | 'status' | 'resol
 
     const supabase = await getSupabase();
     
+    // Recupera o ID do usuário logado (se houver)
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData?.session?.user?.id;
+    
     // Status será salvo como 'Pendente' para alinhar com a estrutura do BD.
     const { data, error } = await supabase
       .from('chamados')
@@ -84,7 +88,8 @@ export async function abrirChamado(dados: Omit<Chamado, 'id' | 'status' | 'resol
           categoria: dadosValidados.categoria, 
           descricao: dadosValidados.descricao,
           anexo_url: dadosValidados.anexo_url,
-          status: 'Pendente'
+          status: 'Pendente',
+          ...(userId ? { user_id: userId } : {})
         }
       ])
       .select()

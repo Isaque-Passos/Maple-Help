@@ -17,18 +17,26 @@ export function extractFirstName(email: string): string {
 }
 
 /**
- * E-mails autorizados para acessar o painel de administração.
- * Centralizado para evitar divergência entre client e server.
+ * Retorna os e-mails autorizados para acessar o painel de administração.
+ * Lê a partir das variáveis de ambiente.
  */
-export const ADMIN_EMAILS = [
-  'isaque.santos@maplebeararaxa.com.br',
-  'jose.reis@maplebeararaxa.com.br',
-  'pedro.ashidani@maplebeararaxa.com.br'
-];
+export function getAdminEmails(): string[] {
+  const envEmails = process.env.ADMIN_EMAILS || '';
+  if (envEmails) {
+    return envEmails.split(',').map(e => e.trim().toLowerCase());
+  }
+  
+  // Fallback seguro caso não tenha configurado no .env
+  return [
+    'isaque.santos@maplebeararaxa.com.br',
+    'jose.reis@maplebeararaxa.com.br',
+    'pedro.ashidani@maplebeararaxa.com.br'
+  ];
+}
 
 /**
  * Verifica se um e-mail pertence a um administrador.
  */
 export function isAdminEmail(email: string): boolean {
-  return ADMIN_EMAILS.includes(email.toLowerCase());
+  return getAdminEmails().includes(email.toLowerCase());
 }

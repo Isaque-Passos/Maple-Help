@@ -15,6 +15,8 @@ export function ChamadoModal({ chamado, onClose, onAssumir, onConcluir, onDelete
   const [tempoGasto, setTempoGasto] = useState('');
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [tempoError, setTempoError] = useState(false);
+  const [resolucaoError, setResolucaoError] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
   // Fechar com ESC e travar scroll do body (#7)
@@ -50,16 +52,14 @@ export function ChamadoModal({ chamado, onClose, onAssumir, onConcluir, onDelete
     let hasError = false;
 
     if (!tempoGasto.trim()) {
-      const input = document.getElementById('tempo-input');
-      input?.classList.add('ring-2', 'ring-red-400');
-      setTimeout(() => input?.classList.remove('ring-2', 'ring-red-400'), 2000);
+      setTempoError(true);
+      setTimeout(() => setTempoError(false), 2000);
       hasError = true;
     }
 
     if (!resolucao.trim()) {
-      const textarea = document.getElementById('resolucao-textarea');
-      textarea?.classList.add('ring-2', 'ring-red-400');
-      setTimeout(() => textarea?.classList.remove('ring-2', 'ring-red-400'), 2000);
+      setResolucaoError(true);
+      setTimeout(() => setResolucaoError(false), 2000);
       hasError = true;
     }
 
@@ -191,7 +191,9 @@ export function ChamadoModal({ chamado, onClose, onAssumir, onConcluir, onDelete
                     value={tempoGasto}
                     onChange={(e) => setTempoGasto(e.target.value)}
                     placeholder="Ex: 30m, 1h 20m..."
-                    className="w-full p-3 bg-white text-zinc-900 border border-zinc-200 rounded-xl focus:ring-2 focus:ring-[#E31837] focus:border-[#E31837] outline-none transition-all"
+                    className={`w-full p-3 bg-white text-zinc-900 border rounded-xl focus:ring-2 focus:ring-[#E31837] focus:border-[#E31837] outline-none transition-all ${
+                      tempoError ? 'border-red-400 ring-2 ring-red-400' : 'border-zinc-200'
+                    }`}
                   />
                 </div>
                 <div>
@@ -203,7 +205,9 @@ export function ChamadoModal({ chamado, onClose, onAssumir, onConcluir, onDelete
                     value={resolucao}
                     onChange={(e) => setResolucao(e.target.value)}
                     placeholder="Descreva o que foi feito para resolver o problema..."
-                    className="w-full p-4 bg-white text-zinc-900 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-[#E31837] focus:border-[#E31837] outline-none transition-all resize-none min-h-[120px]"
+                    className={`w-full p-4 bg-white text-zinc-900 border rounded-2xl focus:ring-2 focus:ring-[#E31837] focus:border-[#E31837] outline-none transition-all resize-none min-h-[120px] ${
+                      resolucaoError ? 'border-red-400 ring-2 ring-red-400' : 'border-zinc-200'
+                    }`}
                   />
                 </div>
               </div>

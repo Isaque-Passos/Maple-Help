@@ -3,11 +3,17 @@ import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 // E-mails autorizados
-const ADMIN_EMAILS = [
-  'isaque.santos@maplebeararaxa.com.br',
-  'jose.reis@maplebeararaxa.com.br',
-  'pedro.ashidani@maplebeararaxa.com.br'
-];
+function getAdminEmails(): string[] {
+  const envEmails = process.env.ADMIN_EMAILS || '';
+  if (envEmails) {
+    return envEmails.split(',').map(e => e.trim().toLowerCase());
+  }
+  return [
+    'isaque.santos@maplebeararaxa.com.br',
+    'jose.reis@maplebeararaxa.com.br',
+    'pedro.ashidani@maplebeararaxa.com.br'
+  ];
+}
 
 export async function proxy(request: NextRequest) {
   // Só proteger rotas /adm/*
@@ -54,7 +60,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL('/', request.url));
     }
 
-    if (!ADMIN_EMAILS.includes(user.email.toLowerCase())) {
+    if (!getAdminEmails().includes(user.email.toLowerCase())) {
       const url = new URL('/menu', request.url);
       url.searchParams.set('unauthorized', '1');
       return NextResponse.redirect(url);
