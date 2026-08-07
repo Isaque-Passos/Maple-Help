@@ -234,6 +234,7 @@ export default function ChamadoPage() {
               id="descricao"
               required
               rows={4}
+              minLength={10}
               maxLength={MAX_DESC}
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
