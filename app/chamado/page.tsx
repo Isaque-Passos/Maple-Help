@@ -42,7 +42,7 @@ export default function ChamadoPage() {
     setLoading(true);
 
     try {
-      let anexo_url = null;
+      let anexo_url: string | undefined = undefined;
       
       if (anexo) {
         // Validação client-side do anexo
