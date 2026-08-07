@@ -23,7 +23,32 @@ O projeto foi construído utilizando as ferramentas mais modernas do ecossistema
 
 ---
 
-## 3. Arquitetura e Padrões de Projeto
+## 3. Storage (Armazenamento de Anexos)
+
+**NOVO EM PRODUÇÃO: Bucket Privado e URLs Assinadas**
+O sistema foi refatorado para utilizar *Bucket Privado* no Supabase, garantindo que anexos sensíveis (fotos internas, chamados sigilosos) não fiquem expostos a quem possui a URL.
+
+Crie um bucket chamado `chamados-anexos` e configure-o como **Privado** (NÃO marque "Public bucket").
+
+### Configuração de Políticas RLS do Storage
+
+Para permitir uploads públicos (qualquer pessoa abrindo chamado) e leitura apenas para o sistema (que gera a URL assinada na Server Action autenticada):
+
+1. Vá em `Storage` -> `chamados-anexos` -> `Policies`.
+2. Adicione uma política para **INSERT (Upload)**:
+   - Target Roles: `anon`, `authenticated`
+   - Allowed operation: `INSERT`
+   - Policy: `true` (Permitir qualquer um enviar imagens na hora de abrir o chamado).
+3. Adicione uma política para **SELECT (Leitura)**:
+   - Target Roles: `authenticated`
+   - Allowed operation: `SELECT`
+   - Policy: `true` (O servidor com permissão de administrador gera a URL assinada via Server Action para exibir na tela).
+
+O Frontend agora suporta apenas imagens de até 5MB e formatos JPEG, PNG e WEBP. Arquivos órfãos gerados por falha na criação do chamado são automaticamente limpos pela Action.
+
+---
+
+## 4. Arquitetura e Padrões de Projeto
 
 - **Server Actions**: O projeto substitui o antigo padrão de API Routes do Next.js pelo uso de Server Actions (arquivos com a diretiva `'use server'`). Todas as interações com o banco de dados (como abrir um chamado, editar e deletar) ocorrem de maneira segura no servidor, em `app/actions/chamados.ts`.
 - **Proteção na Borda (Middleware)**: Utiliza `middleware.ts` para interceptar requisições. O middleware checa o cookie de sessão do Supabase de forma nativa e redireciona usuários que tentam acessar o painel administrativo (`/adm`) sem a devida autorização.
@@ -31,10 +56,20 @@ O projeto foi construído utilizando as ferramentas mais modernas do ecossistema
 
 ---
 
-## 4. Funcionalidades Principais
+## 5. Funcionalidades Principais
 
 ### Para Usuários Comuns (Professores / Funcionários)
 - **Autenticação Institucional**: O sistema restringe cadastros apenas para usuários que possuam o domínio oficial da escola (`@maplebeararaxa.com.br`).
+- **Configuração de Variáveis de Ambiente**:
+```env
+NEXT_PUBLIC_SUPABASE_URL=seu_url_do_supabase
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anonima_do_supabase
+ADMIN_EMAILS=seu_email@maplebeararaxa.com.br,outro_email@maplebeararaxa.com.br
+
+# Rate Limit (Upstash Redis) - Opcional para desenvolvimento, obrigatório em Produção
+UPSTASH_REDIS_REST_URL=sua_url_do_upstash
+UPSTASH_REDIS_REST_TOKEN=seu_token_do_upstash
+```
 - **Abertura de Chamados**: Os usuários podem abrir chamados preenchendo Solicitante, Local, Categoria, Descrição e URL de Anexos.
 - **Acompanhamento (Meus Chamados)**: Tela específica onde o usuário consegue visualizar o andamento de seus próprios chamados através do vínculo direto pelo `user_id`.
 

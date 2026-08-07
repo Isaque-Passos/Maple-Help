@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { extractFirstName, isAdminEmail } from '@/lib/utils';
+import { extractFirstName } from '@/lib/utils';
 import { usePageTitle } from '@/lib/usePageTitle';
 import Header from '@/components/Header';
+import { checkIsAdmin } from '../actions/chamados';
 
 export default function HubMenu() {
   usePageTitle('Menu Principal');
@@ -43,9 +44,9 @@ export default function HubMenu() {
       const email = session.user.email || '';
       setUserName(extractFirstName(email));
       
-      if (isAdminEmail(email)) {
-        setIsAdmin(true);
-      }
+      const adminStatus = await checkIsAdmin();
+      setIsAdmin(adminStatus);
+      
       setLoading(false);
     };
 

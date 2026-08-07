@@ -26,12 +26,8 @@ export function getAdminEmails(): string[] {
     return envEmails.split(',').map(e => e.trim().toLowerCase());
   }
   
-  // Fallback seguro caso não tenha configurado no .env
-  return [
-    'isaque.santos@maplebeararaxa.com.br',
-    'jose.reis@maplebeararaxa.com.br',
-    'pedro.ashidani@maplebeararaxa.com.br'
-  ];
+  // Sem fallback hardcoded por segurança em produção
+  return [];
 }
 
 /**

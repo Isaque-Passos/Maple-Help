@@ -6,10 +6,11 @@ import { supabase } from '@/lib/supabase';
 import { extractFirstName } from '@/lib/utils';
 import { usePageTitle } from '@/lib/usePageTitle';
 import { useToast } from '@/components/ToastProvider';
-import { obterChamadosAbertos, assumirChamado, finalizarChamado, deletarChamado } from '../actions/chamados';
+import { obterChamadosAbertos, obterChamadosConcluidosHoje, assumirChamado, finalizarChamado, deletarChamado } from '../actions/chamados';
 import { Chamado } from '@/types/database';
 import { ChamadoCard } from '@/components/ChamadoCard';
 import { ChamadoModal } from '@/components/ChamadoModal';
+import { useCallback } from 'react';
 
 // O AudioContext precisa ser global e persistente para tocar em abas fora de foco (segundo plano)
 let globalAudioCtx: AudioContext | null = null;
@@ -24,16 +25,22 @@ export default function Dashboard() {
   const [chamadoSelecionado, setChamadoSelecionado] = useState<Chamado | null>(null);
   const [adminName, setAdminName] = useState<string>('TI');
 
-  const fetchChamados = async () => {
+  const [concluidosHoje, setConcluidosHoje] = useState<Chamado[]>([]);
+
+  const fetchChamados = useCallback(async () => {
     try {
-      const data = await obterChamadosAbertos();
-      setChamados(data);
+      const [abertos, concluidos] = await Promise.all([
+        obterChamadosAbertos(),
+        obterChamadosConcluidosHoje()
+      ]);
+      setChamados(abertos);
+      setConcluidosHoje(concluidos);
     } catch (error) {
       console.error('Erro ao buscar chamados:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Função para tocar o som de notificação usando Web Audio API
   const playNotificationSound = () => {
@@ -120,12 +127,11 @@ export default function Dashboard() {
       document.removeEventListener('click', unlockAudio);
       document.removeEventListener('keydown', unlockAudio);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchChamados]);
 
   const handleAssumir = async (id: string) => {
     try {
-      await assumirChamado(id, adminName);
+      await assumirChamado(id);
       await fetchChamados();
       
       // Atualiza o modal aberto se necessário
@@ -164,8 +170,7 @@ export default function Dashboard() {
   // Separação dos chamados nas colunas do Kanban
   const pendentes = chamados.filter(c => c.status === 'Pendente');
   const emAndamento = chamados.filter(c => c.status === 'Em Andamento');
-  // Nota: A função obterChamadosAbertos já filtra os concluídos, mas se viermos a buscar todos no futuro, mantemos a coluna pronta.
-  const concluidos = chamados.filter(c => c.status === 'Concluído');
+  const concluidos = concluidosHoje;
 
   if (loading) {
     return (

@@ -1,5 +1,6 @@
 import { Chamado } from '@/types/database';
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { ConfirmModal } from './ConfirmModal';
 
 interface ChamadoModalProps {
@@ -166,12 +167,13 @@ export function ChamadoModal({ chamado, onClose, onAssumir, onConcluir, onDelete
               {chamado.anexo_url && (
                 <div className="mt-4 pt-4 border-t border-zinc-200">
                   <p className="text-xs text-zinc-500 font-semibold uppercase tracking-wider mb-2">Anexo</p>
-                  <a href={chamado.anexo_url} target="_blank" rel="noopener noreferrer" className="block max-w-sm rounded-lg overflow-hidden border border-zinc-200 shadow-sm hover:shadow-md transition-shadow">
-                    <img 
+                  <a href={chamado.anexo_url} target="_blank" rel="noopener noreferrer" className="block max-w-sm rounded-lg overflow-hidden border border-zinc-200 shadow-sm hover:shadow-md transition-shadow relative h-64 w-full">
+                    <Image 
                       src={chamado.anexo_url} 
                       alt="Anexo do Chamado" 
-                      className="w-full h-auto object-cover max-h-64"
-                      loading="lazy"
+                      fill
+                      className="object-cover"
+                      unoptimized={true}
                     />
                   </a>
                 </div>

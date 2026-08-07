@@ -45,6 +45,18 @@ export default function ChamadoPage() {
       let anexo_url = null;
       
       if (anexo) {
+        // Validação client-side do anexo
+        const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+        if (anexo.size > MAX_FILE_SIZE) {
+          throw new Error('O arquivo excede o limite de 5MB.');
+        }
+
+        if (!validTypes.includes(anexo.type)) {
+          throw new Error('Formato inválido. Use JPEG, PNG ou WEBP.');
+        }
+
         // Criar um nome único para o arquivo
         const fileExt = anexo.name.split('.').pop();
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
@@ -57,14 +69,20 @@ export default function ChamadoPage() {
           throw new Error('Erro ao fazer upload da imagem: ' + uploadError.message);
         }
         
-        const { data: publicUrlData } = supabase.storage
-          .from('chamados-anexos')
-          .getPublicUrl(fileName);
-          
-        anexo_url = publicUrlData.publicUrl;
+        // Salvamos apenas o caminho do arquivo, e não a URL pública, 
+        // já que agora usamos um bucket privado e URLs assinadas.
+        anexo_url = fileName;
       }
 
-      await abrirChamado({ solicitante, local, categoria, descricao, anexo_url });
+      try {
+        await abrirChamado({ solicitante, local, categoria, descricao, anexo_url });
+      } catch (chamadoError: unknown) {
+        // Se a criação do chamado falhar, deleta o anexo (evita arquivos órfãos)
+        if (anexo_url) {
+          await supabase.storage.from('chamados-anexos').remove([anexo_url]);
+        }
+        throw chamadoError;
+      }
       
       // Feedback de sucesso com modal customizado
       setShowSuccess(true);
@@ -245,11 +263,20 @@ export default function ChamadoPage() {
               <input
                 id="anexo"
                 type="file"
-                accept="image/*"
+                accept="image/jpeg, image/png, image/webp"
                 className="hidden"
                 onChange={(e) => {
                   if (e.target.files && e.target.files[0]) {
-                    setAnexo(e.target.files[0]);
+                    const file = e.target.files[0];
+                    if (file.size > 5 * 1024 * 1024) {
+                      addToast('O arquivo excede o limite de 5MB.', 'error');
+                      return;
+                    }
+                    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                      addToast('Formato inválido. Use JPEG, PNG ou WEBP.', 'error');
+                      return;
+                    }
+                    setAnexo(file);
                   }
                 }}
               />
